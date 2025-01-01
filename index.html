@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description"
+        content="Kolibrie - The high-performance, next-generation SPARQL query engine built in Rust" />
+    <title>Kolibrie | High-Performance SPARQL Query Engine</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <!-- Typed.js for typing effect -->
+    <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
+    <!-- Remove js confetti -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/js-confetti@latest/dist/js-confetti.browser.js"></script> -->
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+
+        .gradient-text {
+            background: linear-gradient(45deg, #2c3e50, #34495e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 120px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            /* Position above the icon */
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Navigation Bar Styles */
+        .nav-link {
+            transition: color 0.3s, transform 0.3s;
+        }
+
+        .nav-link:hover {
+            color: #171e26;
+            transform: scale(1.1);
+        }
+
+        .nav-link.active {
+            color: #171e26;
+            font-weight: bold;
+        }
+
+        /* Button Styles */
+        .btn {
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .btn:hover {
+            background-color: rgba(23, 30, 38, 0.9);
+            transform: scale(1.05);
+        }
+
+        .btn:active {
+            background-color: rgba(23, 30, 38, 0.8);
+            transform: scale(0.95);
+        }
+
+        .btn2 {
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .btn2:hover {
+            background-color: rgba(255, 255, 255, 0.9);
+            transform: scale(1.05);
+        }
+
+        .btn2:active {
+            background-color: rgba(255, 255, 255, 0.8);
+            transform: scale(0.95);
+        }
+
+        /* Scroll Bar Styles */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Icon animations */
+        .feature-icon {
+            transition: all 0.3s ease;
+        }
+
+        /* Bounce animation */
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        /* Rotate animation */
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Pulse animation */
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        /* Shake animation */
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-5px);
+            }
+
+            75% {
+                transform: translateX(5px);
+            }
+        }
+
+        /* Apply animations to specific icons */
+        .feature-icon.bolt:hover {
+            animation: pulse 1s infinite;
+            color: #171e26;
+        }
+
+        .feature-icon.code:hover {
+            animation: bounce 1s infinite;
+            color: #171e26;
+        }
+
+        .feature-icon.sitemap:hover {
+            animation: shake 1s infinite;
+            color: #171e26;
+        }
+
+        .feature-icon.chip:hover {
+            animation: rotate 2s infinite linear;
+            color: #171e26;
+        }
+
+        .feature-icon.cogs:hover {
+            animation: rotate 3s infinite linear;
+            color: #171e26;
+        }
+
+        .feature-icon.stream:hover {
+            animation: bounce 1s infinite;
+            color: #171e26;
+        }
+
+        .typed-code-block {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            display: inline;
+        }
+
+        .typed-cursor {
+            display: inline;
+            opacity: 1;
+            margin-left: 2px;
+            color: #4ade80;
+        }
+
+        @keyframes blink {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-white text-gray-900 font-sans">
+    <!-- Navigation -->
+    <header class="sticky top-0 z-50 bg-white shadow-md">
+        <div class="container mx-auto flex items-center justify-between py-4 px-6 max-w-6xl">
+            <div class="flex items-center space-x-4">
+                <img src="kolibrie.jfif" alt="Kolibrie Logo" class="h-10 w-10 rounded-full" />
+                <span class="text-2xl font-bold gradient-text">Kolibrie</span>
+            </div>
+
+            <nav class="hidden md:flex space-x-6">
+                <a href="#overview" class="nav-link text-gray-700">Overview</a>
+                <a href="#features" class="nav-link text-gray-700">Features</a>
+                <a href="#performance" class="nav-link text-gray-700">Performance</a>
+                <a href="#getting-started" class="nav-link text-gray-700">Docs</a>
+                <a href="#community" class="nav-link text-gray-700">Community</a>
+            </nav>
+
+            <div class="flex items-center space-x-4">
+                <a href="https://github.com/StreamIntelligenceLab/Kolibrie" target="_blank"
+                    class="btn bg-[#171e26] text-white px-4 py-2 rounded-lg">
+                    <i class="fab fa-github mr-2"></i>GitHub
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="overview" class="bg-gradient-to-br from-[#171e26] to-[#2c3e50] text-white py-20">
+        <div class="container mx-auto max-w-4xl text-center px-6">
+            <h1 class="text-5xl font-bold mb-6">Blazing Fast SPARQL Queries</h1>
+            <p class="text-xl mb-8">
+                Kolibrie is a high-performance SPARQL query engine built in Rust,
+                designed for speed, scalability, and precision in knowledge graph
+                processing.
+            </p>
+
+            <div class="flex justify-center space-x-4">
+                <a href="#getting-started" class="btn2 bg-white text-[#171e26] px-6 py-3 rounded-lg font-bold">
+                    Get Started
+                </a>
+                <a href="#performance" class="btn border-2 border-white text-white px-6 py-3 rounded-lg">
+                    See Performance
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Key Features -->
+    <section id="features" class="py-20 bg-gray-50">
+        <div class="container mx-auto max-w-6xl">
+            <h2 class="text-4xl font-bold text-center mb-12 gradient-text">
+                Why Kolibrie?
+            </h2>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition">
+                    <div class="text-[#171e26] text-4xl mb-4">
+                        <i class="fas fa-bolt feature-icon bolt"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4">Rust-Native Performance</h3>
+                    <p class="text-gray-600">
+                        Leverage Rust's zero-cost abstractions for unparalleled query
+                        processing speed.
+                    </p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition">
+                    <i class="fas fa-file-code feature-icon code text-[#171e26] text-4xl mb-4"></i>
+                    <h4 class="text-xl font-bold mb-4">Efficient RDF Parsing</h4>
+                    <p>
+                        Supports RDF/XML, Turtle, and N3 with robust error handling and
+                        prefix management.
+                    </p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition">
+                    <div class="text-[#171e26] text-4xl mb-4">
+                        <i class="fas fa-sitemap feature-icon sitemap"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4">Advanced Knowledge Graphs</h3>
+                    <p class="text-gray-600">
+                        Robust support for complex knowledge graph operations with dynamic
+                        inference.
+                    </p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition">
+                    <div class="text-[#171e26] text-4xl mb-4">
+                        <i class="fas fa-microchip feature-icon chip"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4">SIMD & Parallel Processing</h3>
+                    <p class="text-gray-600">
+                        Maximize hardware utilization with SIMD instructions and concurrent
+                        processing.
+                    </p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition">
+                    <i class="fas fa-cogs feature-icon cogs text-[#171e26] text-4xl mb-4"></i>
+                    <h4 class="text-xl font-bold mb-4">Volcano Optimizer</h4>
+                    <p>
+                        Cost-based query optimizer for efficient query execution planning.
+                    </p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition">
+                    <i class="fas fa-stream feature-icon stream text-[#171e26] text-4xl mb-4"></i>
+                    <h4 class="text-xl font-bold mb-4">Streaming and Sliding Windows</h4>
+                    <p>
+                        Real-time analysis with timestamped triples and sliding window
+                        operations.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Performance Benchmarks -->
+    <section id="performance" class="py-20">
+        <div class="container mx-auto max-w-6xl">
+            <h2 class="text-4xl font-bold text-center mb-12 gradient-text">
+                Benchmark Performance
+            </h2>
+
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div>
+                    <h3 class="text-2xl font-bold mb-6">Outperforming Traditional Engines</h3>
+                    <p class="text-gray-600 mb-6">
+                        Kolibrie demonstrates superior query execution times compared to existing
+                        SPARQL engines, leveraging Rust's performance capabilities and advanced
+                        optimization techniques.
+                    </p>
+                    <ul class="space-y-3">
+                        <li class="flex items-center">
+                            <i class="fas fa-check-circle text-[#171e26] mr-3"></i>
+                            <span>Up to 4.5x faster than Apache Jena</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-check-circle text-[#171e26] mr-3"></i>
+                            <span>Efficient memory management</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-check-circle text-[#171e26] mr-3"></i>
+                            <span>Scalable for large knowledge graphs</span>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <canvas id="benchmarkChart" class="w-full"></canvas>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Getting Started -->
+    <section id="getting-started" class="py-20 bg-gray-50">
+        <div class="container mx-auto max-w-6xl text-center">
+            <h2 class="text-4xl font-bold mb-8 gradient-text">Quick Start</h2>
+            <p class="text-xl mb-12 text-gray-600">
+                Get up and running with Kolibrie in just a few simple steps
+            </p>
+
+            <!-- Replace the two separate terminal boxes with this single one -->
+            <div class="bg-white rounded-xl shadow-lg p-8 max-w-2xl mx-auto">
+                <div class="relative bg-gray-900 text-green-400 rounded-lg mb-6 font-mono text-sm text-left p-6"
+                    style="min-height: 120px;">
+                    <!-- Mac Terminal 'traffic lights' -->
+                    <div class="absolute top-2 left-3 flex space-x-1">
+                        <span class="inline-block h-3 w-3 rounded-full bg-red-500"></span>
+                        <span class="inline-block h-3 w-3 rounded-full bg-yellow-500"></span>
+                        <span class="inline-block h-3 w-3 rounded-full bg-green-500"></span>
+                    </div>
+
+                    <!-- Copy button -->
+                    <button id="copyBtn"
+                        class="absolute top-2 right-2 text-white hover:text-gray-300 focus:outline-none">
+                        <i class="fas fa-copy"></i>
+                    </button>
+
+                    <!-- Single typed text area -->
+                    <div class="mt-4">
+                        <div class="flex items-start">
+                            <span class="text-green-400 select-none mr-2">$</span>
+                            <div class="flex-1">
+                                <span id="typed-code" class="typed-code-block"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Buttons (same style) -->
+                <div class="flex justify-center space-x-4">
+                    <a href="#" class="btn bg-[#171e26] text-white px-6 py-3 rounded-lg">
+                        Documentation
+                    </a>
+                    <a href="https://github.com/StreamIntelligenceLab/Kolibrie"
+                        class="btn2 border-2 border-[#171e26] text-[#171e26] px-6 py-3 rounded-lg">
+                        GitHub Repository
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Community & Support -->
+    <section id="community" class="py-20">
+        <div class="container mx-auto max-w-6xl text-center">
+            <h2 class="text-4xl font-bold mb-8 gradient-text">Join the Community</h2>
+            <p class="text-xl mb-12 text-gray-600">
+                Connect, contribute, and grow with the Kolibrie open-source community
+            </p>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <div class="tooltip">
+                        <i class="fab fa-github text-4xl mb-4 text-[#171e26]"></i>
+                    </div>
+                    <h3 class="font-bold mb-4">Contribute</h3>
+                    <p class="text-gray-600 mb-4">
+                        Contribute to the project by submitting pull requests or reporting
+                        issues.
+                    </p>
+                    <a href="https://github.com/StreamIntelligenceLab/Kolibrie"
+                        class="text-[#171e26] hover:underline">View on GitHub</a>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <div class="tooltip">
+                        <i class="fab fa-discord text-4xl mb-4 text-[#171e26]"></i>
+                    </div>
+                    <h3 class="font-bold mb-4">Discord Community</h3>
+                    <p class="text-gray-600 mb-4">
+                        Join our Discord to discuss Kolibrie, ask questions, and connect
+                        with developers.
+                    </p>
+                    <a href="#" class="text-[#171e26] hover:underline">Join Discord</a>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <div class="tooltip">
+                        <i class="fas fa-book text-4xl mb-4 text-[#171e26]"></i>
+                    </div>
+                    <h3 class="font-bold mb-4">Documentation</h3>
+                    <p class="text-gray-600 mb-4">
+                        Comprehensive guides and API references to help you get the most
+                        out of Kolibrie.
+                    </p>
+                    <a href="#" class="text-[#171e26] hover:underline">Read Docs</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-[#171e26] text-white py-12">
+        <div class="container mx-auto max-w-6xl text-center">
+            <div class="mb-8">
+                <span class="text-2xl font-bold gradient-text">Kolibrie</span>
+                <p class="text-gray-400 mt-2">High-Performance SPARQL Query Engine</p>
+            </div>
+
+            <div class="flex justify-center space-x-6 mb-8">
+                <a href="#overview" class="nav-link text-gray-400 hover:text-white">Overview</a>
+                <a href="#features" class="nav-link text-gray-400 hover:text-white">Features</a>
+                <a href="#performance" class="nav-link text-gray-400 hover:text-white">Performance</a>
+                <a href="#community" class="nav-link text-gray-400 hover:text-white">Community</a>
+            </div>
+
+            <div class="mb-8 flex justify-center space-x-4">
+                <a href="https://github.com/StreamIntelligenceLab/Kolibrie" class="text-gray-400 hover:text-white"><i
+                        class="fab fa-github"></i></a>
+                <a href="#" class="text-gray-400 hover:text-white"><i class="fab fa-discord"></i></a>
+                <a href="#" class="text-gray-400 hover:text-white"><i class="fas fa-book"></i></a>
+            </div>
+
+            <p class="text-gray-500">© 2024 Kolibrie Project. MIT Licensed.</p>
+        </div>
+    </footer>
+
+    <!-- Copy Toast Notification (hidden by default) -->
+    <div id="copyToast"
+        class="fixed top-4 right-4 z-50 bg-green-600 text-white py-2 px-4 rounded-md shadow-md flex items-center space-x-2 hidden transition-opacity duration-300 opacity-0">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">Copied to clipboard!</span>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Smooth Scrolling for Navigation Links
+        document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+            anchor.addEventListener("click", function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute("href")).scrollIntoView({
+                    behavior: "smooth",
+                });
+            });
+        });
+
+        // Active State for Navigation Links
+        document.querySelectorAll("a.nav-link").forEach((link) => {
+            link.addEventListener("click", function () {
+                document.querySelectorAll("a.nav-link").forEach((link) => {
+                    link.classList.remove("active");
+                });
+                this.classList.add("active");
+            });
+        });
+
+        // Chart.js Benchmark Visualization
+        const ctx = document.getElementById("benchmarkChart").getContext("2d");
+        new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: ["Kolibrie", "Oxigraph", "Apache Jena"],
+                datasets: [
+                    {
+                        label: "Query Execution Time (ms)",
+                        data: [220, 990, 761],
+                        backgroundColor: [
+                            "rgba(99, 130, 246, 0.6)",
+                            "rgba(96, 165, 250, 0.6)",
+                            "rgba(236, 72, 153, 0.6)",
+                        ],
+                        borderColor: [
+                            "rgba(59, 130, 246, 1)",
+                            "rgba(96, 165, 250, 1)",
+                            "rgba(236, 72, 153, 1)",
+                        ],
+                        borderWidth: 1,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                animation: {
+                    duration: 1000, // Animation duration in milliseconds
+                    easing: "easeInOutQuad",
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: "Execution Time (ms)",
+                        },
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: "Engines",
+                        },
+                    },
+                },
+                plugins: {
+                    legend: { display: false },
+                },
+            },
+        });
+
+        // Typed Animation & Prompt Logic For The Quick Start Snippet
+        let waitingForYesNo = false;
+        let currentCommand = '';
+        let isSecondCommand = false;
+        let typedInstance = null;
+        let hasStartedAnimation = false;
+
+        // Create an Intersection Observer
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !hasStartedAnimation) {
+                    initializeTyping();
+                    hasStartedAnimation = true;
+                }
+            });
+        }, {
+            threshold: 0.5
+        });
+
+        // Observe the Quick Start section
+        document.addEventListener('DOMContentLoaded', () => {
+            const quickStartSection = document.getElementById('getting-started');
+            if (quickStartSection) {
+                observer.observe(quickStartSection);
+            }
+        });
+
+        // Function to initialize typing animation
+        function initializeTyping() {
+            typedInstance = new Typed("#typed-code", {
+                strings: [
+                    "cargo install kolibrie\nWould you like to see example? (Y/N)"
+                ],
+                typeSpeed: 50,
+                showCursor: true,
+                cursorChar: "█",
+                onComplete: function () {
+                    waitingForYesNo = true;
+                    currentCommand = "cargo install kolibrie";
+                },
+                bindInputFocusEvents: false,
+                loop: false,
+                autoInsertCss: true
+            });
+        }
+
+        // Function to show second snippet
+        function showSecondSnippet() {
+            const secondCommand = 'kolibrie query --input data.ttl --sparql "SELECT ?s ?p ?o\nWHERE { ?s ?p ?o }"';
+            isSecondCommand = true;
+
+            if (typedInstance) {
+                typedInstance.destroy();
+            }
+
+            typedInstance = new Typed("#typed-code", {
+                strings: [
+                    secondCommand
+                ],
+                typeSpeed: 50,
+                showCursor: true,
+                cursorChar: "█",
+                onComplete: function () {
+                    currentCommand = secondCommand;
+                },
+                bindInputFocusEvents: false,
+                loop: false,
+                autoInsertCss: true
+            });
+        }
+
+        // Listen for keystrokes
+        document.addEventListener("keydown", function (e) {
+            if (!waitingForYesNo) return;
+
+            const key = e.key.toLowerCase();
+            if (key === "y") {
+                waitingForYesNo = false;
+                showSecondSnippet();
+            } else if (key === "n") {
+                waitingForYesNo = false;
+            }
+        });
+
+        // Handle copy functionality
+        document.getElementById("copyBtn").addEventListener("click", function () {
+            let textToCopy = isSecondCommand ?
+                'kolibrie query --input data.ttl --sparql "SELECT ?s ?p ?o WHERE { ?s ?p ?o }"' :
+                "cargo install kolibrie";
+
+            navigator.clipboard.writeText(textToCopy).then(
+                () => showCopyToast(`Command copied to clipboard!`),
+                (err) => console.error("Failed to copy text: ", err)
+            );
+        });
+
+        // Toast notification function remains the same
+        function showCopyToast(message) {
+            const toastEl = document.getElementById("copyToast");
+            const toastMsgEl = document.getElementById("toastMessage");
+            if (!toastEl || !toastMsgEl) return;
+
+            toastMsgEl.textContent = message;
+            toastEl.classList.remove("hidden", "opacity-0");
+            toastEl.classList.add("opacity-100");
+
+            setTimeout(() => {
+                toastEl.classList.remove("opacity-100");
+                toastEl.classList.add("opacity-0");
+                setTimeout(() => {
+                    toastEl.classList.add("hidden");
+                }, 300);
+            }, 2000);
+        }
+    </script>
+    <!-- Remove this script after -->
+    <!-- <script setup>
+        const confetti = new JSConfetti()
+
+        function showConfetti() {
+        confetti.addConfetti()
+        }
+
+        showConfetti()
+    </script> -->
+</body>
+
+</html>
