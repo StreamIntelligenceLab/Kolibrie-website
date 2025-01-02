@@ -237,6 +237,116 @@
                 opacity: 1;
             }
         }
+
+        /* Dark mode overrides */
+        .dark body {
+            background-color: #121212;
+            color: #e5e7eb;
+        }
+
+        .dark .gradient-text {
+            background: linear-gradient(45deg, #60a5fa, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .dark header {
+            background-color: #1a1a1a;
+            border-bottom: 1px solid #2d2d2d;
+        }
+
+        .dark .nav-link {
+            color: #e5e7eb;
+        }
+
+        .dark .nav-link:hover {
+            color: #60a5fa;
+        }
+
+        .dark .nav-link.active {
+            color: #60a5fa;
+        }
+
+        .dark #features,
+        .dark #getting-started {
+            background-color: #1a1a1a;
+        }
+
+        .dark .bg-white {
+            background-color: #242424;
+        }
+
+        .dark .shadow-lg {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+        }
+
+        .dark .text-gray-600,
+        .dark .text-gray-900 {
+            color: #d1d5db;
+        }
+
+        .dark .feature-icon {
+            color: #3b82f6 !important; /* Blue color for all feature icons in dark mode */
+        }
+
+        .dark .feature-icon:hover {
+            color: #3b82f6 !important; /* Lighter blue on hover */
+        }
+
+        .dark .btn {
+            background-color: #3b82f6;
+        }
+
+        .dark .btn:hover {
+            background-color: #2563eb;
+        }
+
+        .dark .btn2 {
+            background-color: #242424;
+            color: #e5e7eb;
+            border-color: #3b82f6;
+        }
+
+        .dark .btn2:hover {
+            background-color: #1a1a1a;
+        }
+
+        .dark #benchmarkChart {
+            filter: invert(0.9) hue-rotate(180deg);
+        }
+
+        .dark .bg-gray-50 {
+            background-color: #1a1a1a;
+        }
+
+        .dark .tooltip i {
+            color: #3b82f6 !important; /* Blue color for community section icons */
+        }
+
+        .dark .fa-check-circle {
+            color: #3b82f6 !important; /* Blue color for check circle icons */
+        }
+
+        .dark footer {
+            background-color: #0a0a0a;
+        }
+
+        .dark footer .text-gray-400 {
+            color: #9ca3af;
+        }
+
+        .dark footer .text-gray-500 {
+            color: #6b7280;
+        }
+
+        /* Make text in the Community & Support section blue in dark mode */
+        .dark #community a {
+            color: #3b82f6 !important;
+        }
+
+        .dark footer a:hover i {
+            color: #3b82f6 !important;
+        }
     </style>
 </head>
 
@@ -258,6 +368,17 @@
             </nav>
 
             <div class="flex items-center space-x-4">
+                <!-- Theme Toggle Button -->
+                <button id="theme-toggle" class="p-2 rounded-lg text-gray-500 dark:text-gray-400">
+                    <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+                    </svg>
+                    <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"></path>
+                    </svg>
+                </button>
+                
+                <!-- GitHub Button -->
                 <a href="https://github.com/StreamIntelligenceLab/Kolibrie" target="_blank"
                     class="btn bg-[#171e26] text-white px-4 py-2 rounded-lg">
                     <i class="fab fa-github mr-2"></i>GitHub
@@ -712,6 +833,41 @@
                     toastEl.classList.add("hidden");
                 }, 300);
             }, 2000);
+        }
+
+        // Theme toggle functionality
+        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+        const themeToggleBtn = document.getElementById('theme-toggle');
+
+        // Change the icons inside the button based on previous settings
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            themeToggleLightIcon.classList.remove('hidden');
+        } else {
+            themeToggleDarkIcon.classList.remove('hidden');
+        }
+
+        themeToggleBtn.addEventListener('click', function() {
+            // Toggle icons
+            themeToggleDarkIcon.classList.toggle('hidden');
+            themeToggleLightIcon.classList.toggle('hidden');
+
+            // If is dark mode
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        });
+    </script>
+    <script>
+        // Check for saved theme preference, otherwise use system preference
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark')
+        } else {
+            document.documentElement.classList.remove('dark')
         }
     </script>
     <!-- Remove this script after -->
