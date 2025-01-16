@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="light">
 
 <head>
     <meta charset="UTF-8" />
@@ -7,6 +7,14 @@
     <meta name="description"
         content="Kolibrie - The high-performance, next-generation SPARQL query engine built in Rust" />
     <title>Kolibrie | High-Performance SPARQL Query Engine</title>
+
+    <!-- Favicon and App Icons -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="icon/kolibrie180x180.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="icon/kolibrie32x32.ico">
+    <link rel="icon" type="image/png" sizes="16x16" href="icon/kolibrie16x16.ico">
+    <link rel="manifest" href="site.webmanifest">
+    <meta name="theme-color" content="#ffffff">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -553,7 +561,7 @@
 
                 <!-- Buttons (same style) -->
                 <div class="flex justify-center space-x-4">
-                    <a href="#" class="btn bg-[#171e26] text-white px-6 py-3 rounded-lg">
+                    <a href="/docs/index.html" class="btn bg-[#171e26] text-white px-6 py-3 rounded-lg">
                         Documentation
                     </a>
                     <a href="https://github.com/StreamIntelligenceLab/Kolibrie"
@@ -608,7 +616,7 @@
                         Comprehensive guides and API references to help you get the most
                         out of Kolibrie.
                     </p>
-                    <a href="#" class="text-[#171e26] hover:underline">Read Docs</a>
+                    <a href="docs/index.html" class="text-[#171e26] hover:underline">Read Docs</a>
                 </div>
             </div>
         </div>
@@ -633,7 +641,7 @@
                 <a href="https://github.com/StreamIntelligenceLab/Kolibrie" class="text-gray-400 hover:text-white"><i
                         class="fab fa-github"></i></a>
                 <a href="#" class="text-gray-400 hover:text-white"><i class="fab fa-discord"></i></a>
-                <a href="#" class="text-gray-400 hover:text-white"><i class="fas fa-book"></i></a>
+                <a href="docs/index.html" class="text-gray-400 hover:text-white"><i class="fas fa-book"></i></a>
             </div>
 
             <p class="text-gray-500">© 2024 Kolibrie Project. MIT Licensed.</p>
@@ -841,7 +849,8 @@
         const themeToggleBtn = document.getElementById('theme-toggle');
 
         // Change the icons inside the button based on previous settings
-        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        // Change the icons inside the button based on previous settings
+        if (localStorage.getItem('theme') === 'dark') {
             themeToggleLightIcon.classList.remove('hidden');
         } else {
             themeToggleDarkIcon.classList.remove('hidden');
@@ -864,10 +873,11 @@
     </script>
     <script>
         // Check for saved theme preference, otherwise use system preference
-        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark')
+        // Change the icons inside the button based on previous settings
+        if (localStorage.getItem('theme') === 'dark') {
+            themeToggleLightIcon.classList.remove('hidden');
         } else {
-            document.documentElement.classList.remove('dark')
+            themeToggleDarkIcon.classList.remove('hidden');
         }
     </script>
     <!-- Remove this script after -->
