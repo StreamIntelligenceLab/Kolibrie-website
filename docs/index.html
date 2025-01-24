@@ -21,13 +21,49 @@
   <link rel="icon" type="image/png" sizes="16x16" href="../icon/kolibrie16x16.ico">
   <link rel="manifest" href="site.webmanifest">
   <meta name="theme-color" content="#ffffff">
+
+  <style>
+    .back-to-top {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    border: none;
+    border-radius: 50%;
+    background-color: rgba(0, 123, 255, 0.5); /* Semi-transparent background */
+    color: #fff;
+    cursor: pointer;
+    display: none; /* Hidden by default */
+    align-items: center;
+    justify-content: center;
+    z-index: 1000; /* Ensure it's above other elements */
+    transition: background-color 0.3s; /* Smooth transition for hover effect */
+  }
+
+  .back-to-top:hover {
+    background-color: rgba(0, 123, 255, 0.7); /* Darker on hover */
+  }
+
+  .arrow-up {
+    display: inline-block;
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 15px solid white;
+  }
+  </style>   
 </head>
 <body>
   <div id="app"></div>
+  <button id="back-to-top" class="back-to-top" aria-label="Back to Top">
+    <span class="arrow-up"></span>
+  </button>  
   <script>
     window.$docsify = {
-      name: 'Kolibrie-website',
-      repo: 'https://github.com/streamintelligencelab/Kolibrie-website',
+      name: 'Kolibrie Database',
+      repo: 'https://github.com/StreamIntelligenceLab/Kolibrie',
       loadNavbar: true,
       loadSidebar: true,
       subMaxLevel: 4,
@@ -71,6 +107,36 @@
       },
     }
   </script>
+  <script>
+    let lastScrollTop = 0;
+    const backToTopButton = document.getElementById('back-to-top');
+  
+    window.addEventListener('scroll', function() {
+      const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+  
+      if (currentScrollTop > lastScrollTop) {
+        // Scrolling down
+        backToTopButton.style.display = 'none';
+      } else {
+        // Scrolling up
+        if (currentScrollTop > 100) {
+          backToTopButton.style.display = 'flex';
+        } else {
+          backToTopButton.style.display = 'none';
+        }
+      }
+  
+      lastScrollTop = currentScrollTop <= 0 ? 0 : currentScrollTop; // For Mobile or negative scrolling
+    });
+  
+    // Scroll to the top when the button is clicked
+    backToTopButton.addEventListener('click', function() {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    });
+  </script>    
   <!-- Docsify v4 -->
   <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
   <script src="//unpkg.com/docsify/lib/plugins/search.min.js"></script>
