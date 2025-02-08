@@ -398,7 +398,7 @@
     <!-- Hero Section -->
     <section id="overview" class="bg-gradient-to-br from-[#171e26] to-[#2c3e50] text-white py-20">
         <div class="container mx-auto max-w-4xl text-center px-6">
-            <h1 class="text-5xl font-bold mb-6">Blazing Fast SPARQL Queries</h1>
+            <h1 class="text-5xl font-bold mb-6">Kolibrie is <span id="typed-hero"></span></h1>
             <p class="text-xl mb-8">
                 Kolibrie is a high-performance SPARQL query engine built in Rust,
                 designed for speed, scalability, and precision in knowledge graph
@@ -879,6 +879,28 @@
         } else {
             themeToggleDarkIcon.classList.remove('hidden');
         }
+    </script>
+    <script>
+      // Hero section typing animation
+      document.addEventListener('DOMContentLoaded', function() {
+          new Typed('#typed-hero', {
+              strings: [
+                  'blazing fast',
+                  'highly efficient',
+                  'performance-focused',
+                  'your SPARQL powerhouse',
+                  'built for speed',
+                  'optimized for scale'
+              ],
+              typeSpeed: 50,
+              backSpeed: 60,
+              backDelay: 3000,
+              loop: true,
+              smartBackspace: true,
+              showCursor: true,
+              cursorChar: '|'
+          });
+      });
     </script>
     <!-- Remove this script after -->
     <!-- <script setup>

@@ -1,190 +1,96 @@
 # Optimization
 
-## Table of Contents
-
-1. [Introduction](#introduction)
-2. [Logical and Physical Operators](#logical-and-physical-operators)
-    - [Logical Operators](#logical-operators)
-    - [Physical Operators](#physical-operators)
-3. [Volcano Optimizer API](#volcano-optimizer-api)
-4. [Mermaid Diagram: Query Optimization Workflow](#mermaid-diagram-query-optimization-workflow)
-5. [Appendices](#appendices)
-    - [Glossary](#glossary)
-    - [Further Reading](#further-reading)
-
----
-
 ## Introduction
 
-Efficient query planning and optimization are pivotal to the performance and scalability of the Kolibrie Database Engine. This chapter outlines the architecture and APIs that facilitate the transformation of high-level SPARQL queries into optimized execution plans, ensuring rapid and resource-efficient data retrieval.
+Efficient query planning and optimization are crucial for the performance and scalability of the Kolibrie Database Engine. Our system employs advanced, cost-based techniques to transform high-level SPARQL queries into efficient execution plans. Although the overall approach is inspired by established optimization strategies, such as those found in the Volcano optimizer, all internal implementation details are kept proprietary.
 
-### Logical and Physical Operators
+## Logical and Physical Operators
 
-The engine differentiates between **logical operators** and **physical operators** to abstract query semantics from execution strategies. This separation allows for sophisticated optimization techniques and flexibility in execution methods.
+To enable flexible query execution, the engine separates the query processing into two distinct layers:
 
-#### Logical Operators
+- **Logical Operators:**  
+  These operators capture the high-level intent of a SPARQL query. They represent abstract operations such as scanning for triples, filtering based on conditions, projecting specific variables, and joining result sets. This abstraction allows us to reason about query semantics without committing to any specific execution method.
 
-Logical operators represent the abstract, high-level operations defined by the SPARQL query. They encapsulate the intent of the query without specifying how the operations are to be physically executed.
+- **Physical Operators:**  
+  These operators define the concrete methods used to execute the operations represented by the logical plan. They include strategies for accessing and processing data—such as full table scans, index-based scans, various join algorithms, and even parallel execution techniques. The physical operators are chosen during optimization based on their estimated cost and performance characteristics.
 
-**Enum: `LogicalOperator`**
+This separation allows the optimizer to explore multiple execution strategies and select the one that best balances performance with resource efficiency.
 
-- **Variants:**
-    - `Scan`: Initiates the retrieval of triples matching a specific pattern.
-    - `Selection`: Applies a condition to filter the results of a preceding operator.
-    - `Projection`: Selects specific variables from the result set.
-    - `Join`: Combines two result sets based on common variables.
+## Volcano Optimizer API
 
-**Structs:**
+The Kolibrie Database Engine integrates a cost-based optimizer inspired by the Volcano framework. The optimizer’s role is to systematically evaluate different physical execution plans derived from a logical query plan, estimate their costs using statistical information, and select the most efficient plan.
 
-- **`TriplePattern`**
-    - **Fields:**
-        - `subject: Option<String>`: The subject component of the pattern, which can be a variable or a constant.
-        - `predicate: Option<String>`: The predicate component, similarly variable or constant.
-        - `object: Option<String>`: The object component, variable or constant.
+Key high-level aspects of the Volcano Optimizer include:
 
-- **`Condition`**
-    - **Fields:**
-        - `variable: String`: The variable to which the condition is applied.
-        - `operator: String`: The comparison operator (e.g., `=`, `>`, `<`).
-        - `value: String`: The value against which the variable is compared.
+- **Plan Exploration:**  
+  The optimizer recursively examines different ways to execute each part of the logical plan. Although the optimizer considers various physical operators (e.g., different scan or join strategies), the exact algorithms and cost metrics remain internal.
 
-**Usage Example:**
+- **Cost Estimation:**  
+  While theoretical cost estimation methods (such as cardinality and selectivity estimation) are applied to gauge the expense of different execution strategies, the details of these estimations are not disclosed.
 
-A `Selection` operator applies a `Condition` to filter triples where the `?age` variable is greater than `30`.
+- **Plan Selection:**  
+  After evaluating alternatives, the optimizer selects the physical plan that is estimated to yield the best performance. This plan is then executed against the database.
 
-#### Physical Operators
+## Example Usage
 
-Physical operators define the concrete methods and strategies used to execute the operations represented by logical operators. They specify how data is accessed, manipulated, and combined.
+The following code snippet demonstrates how to use the Volcano Optimizer API in a high-level manner. Note that the underlying details of plan generation and cost estimation are abstracted away.
 
-**Enum: `PhysicalOperator`**
+```rust
+use kolibrie::parser::*;
+use kolibrie::sparql_database::*;
+use kolibrie::volcano_optimizer::*;
+use std::time::Instant;
 
-- **Variants:**
-    - `TableScan`: Performs a full scan of the triple store to find matching triples.
-    - `IndexScan`: Utilizes specific indexes to retrieve triples more efficiently.
-    - `Filter`: Applies a condition to filter the results of a preceding operator.
-    - `HashJoin`: Implements a hash-based join strategy for combining result sets.
-    - `NestedLoopJoin`: Implements a nested loop join strategy.
-    - `ParallelJoin`: Performs join operations in parallel for enhanced performance.
-    - `Projection`: Extracts specified variables from the result set.
+fn volcano_optimizer_example() {
+    // Step 1: Initialize the database and load RDF data.
+    let mut database = SparqlDatabase::new();
+    // (RDF data generation and parsing details are abstracted)
+    database.parse_rdf("...");
 
-**API Overview:**
+    // Step 2: Build indexes to support efficient query processing.
+    database.build_all_indexes();
 
-- **Execution Method:**
-    - `fn execute(&self, database: &mut SparqlDatabase) -> Vec<BTreeMap<String, String>>`: Executes the physical operator against the provided database and returns the results as a vector of variable bindings.
+    // Step 3: Define a SPARQL query.
+    let sparql_query = r#"
+    PREFIX ex: <http://example.org/> 
+    SELECT ?loved_person
+    WHERE {
+        <http://example.org/person5> ex:loves ?loved_person .
+        ?loved_person ex:loves <http://example.org/person7>
+    }"#;
 
-- **Specialized Scan Methods:**
-    - `fn execute_table_scan(&self, database: &SparqlDatabase, pattern: &TriplePattern) -> Vec<BTreeMap<String, String>>`: Executes a table scan based on the triple pattern.
-    - `fn execute_index_scan(&self, database: &mut SparqlDatabase, pattern: &TriplePattern) -> Vec<BTreeMap<String, String>>`: Executes an index scan leveraging available indexes.
+    // Step 4: Parse the SPARQL query and construct a logical plan.
+    // (Internal details are hidden; the function abstracts logical plan construction.)
+    let logical_plan = build_logical_plan_from_query(sparql_query, &database);
 
-- **Join Execution Methods:**
-    - `fn execute_hash_join(&self, left_results: Vec<BTreeMap<String, String>>, right_results: Vec<BTreeMap<String, String>>) -> Vec<BTreeMap<String, String>>`: Executes a hash-based join between two result sets.
-    - `fn execute_nested_loop_join(&self, left_results: Vec<BTreeMap<String, String>>, right_results: Vec<BTreeMap<String, String>>) -> Vec<BTreeMap<String, String>>`: Executes a nested loop join between two result sets.
-    - `fn execute_parallel_join(&self, left: &PhysicalOperator, right: &PhysicalOperator, database: &mut SparqlDatabase) -> Vec<BTreeMap<String, String>>`: Executes a parallel join using SIMD optimizations.
+    // Step 5: Initialize the optimizer and find the best physical execution plan.
+    let mut optimizer = VolcanoOptimizer::new(&database);
+    let physical_plan = optimizer.find_best_plan(&logical_plan);
 
-- **Helper Method:**
-    - `fn can_join(&self, left_result: &BTreeMap<String, String>, right_result: &BTreeMap<String, String>) -> bool`: Determines whether two result rows can be joined based on common variable bindings.
+    // Step 6: Execute the physical plan and measure performance.
+    let start = Instant::now();
+    let results = physical_plan.execute(&mut database);
+    let duration = start.elapsed();
 
-**Usage Example:**
+    println!("Query execution time: {:?}", duration);
+    println!("Results: {:?}", results);
+}
 
-A `HashJoin` operator combines two result sets based on the common variable `?person`.
-
-### Volcano Optimizer API
-
-The **Volcano Optimizer** is a cost-based query optimizer inspired by the Volcano project. It systematically explores different physical execution plans for a given logical query, estimates their costs, and selects the most efficient one based on predefined cost metrics.
-
-**Struct: `VolcanoOptimizer`**
-
-- **Fields:**
-    - `memo: HashMap<String, PhysicalOperator>`: Caches the best physical operator plans for logical operator subtrees to avoid redundant computations.
-    - `selected_variables: Vec<String>`: The variables specified in the `SELECT` clause of the query.
-    - `stats: DatabaseStats`: Statistical information about the database, such as total triples and predicate cardinalities, used for cost estimation.
-
-**Struct: `DatabaseStats`**
-
-- **Fields:**
-    - `total_triples: u64`: The total number of triples in the database.
-    - `predicate_cardinalities: HashMap<String, u64>`: A mapping from predicates to the number of triples that use them, aiding in selectivity estimations.
-
-**Methods:**
-
-- **Initialization:**
-    - `fn new(database: &SparqlDatabase) -> Self`: Initializes a new optimizer with gathered statistics from the database.
-
-- **Plan Finding:**
-    - `fn find_best_plan(&mut self, logical_plan: &LogicalOperator) -> PhysicalOperator`: Determines the best physical execution plan for the given logical plan.
-    - `fn find_best_plan_recursive(&mut self, logical_plan: &LogicalOperator) -> PhysicalOperator`: Recursively explores and selects the most cost-effective physical plan.
-
-- **Cost Estimation:**
-    - `fn estimate_cost(&self, plan: &PhysicalOperator) -> u64`: Estimates the cost of executing a given physical operator.
-    - `fn estimate_cardinality(&self, pattern: &TriplePattern) -> u64`: Estimates the number of triples that match a given pattern.
-    - `fn estimate_selectivity(&self, condition: &Condition) -> f64`: Estimates the selectivity of a filter condition.
-    - `fn estimate_output_cardinality(&self, plan: &PhysicalOperator) -> u64`: Estimates the cardinality of the output from a physical operator.
-
-**Usage Workflow:**
-
-1. **Initialization:**
-    - Create an instance of `VolcanoOptimizer` by passing a reference to the `SparqlDatabase`.
-    - The optimizer gathers statistical data necessary for cost estimations.
-
-2. **Plan Generation:**
-    - Invoke `find_best_plan` with the root of the logical operator tree.
-    - The optimizer explores various physical operator combinations, estimates their costs, and selects the most efficient plan.
-
-3. **Execution:**
-    - The selected physical operator tree is then executed to retrieve query results.
-
-**Example Scenario:**
-
-For a query that retrieves all persons named "Alice":
-
-1. **Logical Plan:**
-    - `Scan` operator for triples with predicate `<http://xmlns.com/foaf/0.1/name>` and object `"Alice"`.
-    - `Projection` operator to select the `?person` variable.
-
-2. **Optimizer Execution:**
-    - The optimizer considers both `TableScan` and `IndexScan` for the `Scan` operator.
-    - Based on predicate cardinality and cost factors, it selects the most efficient scan method.
-    - The final physical plan is executed to retrieve the results.
-
-### Mermaid Diagram: Query Optimization Workflow
-
-Below is a Mermaid diagram illustrating the workflow from parsing a SPARQL query to optimizing and executing it using the Volcano Optimizer.
-
-```mermaid
-graph TD
-    A[SPARQL Query] --> B[Query Parser]
-    B --> C[Logical Operator Tree]
-    C --> D[Volcano Optimizer]
-    D --> E[Physical Operator Tree]
-    E --> F[Query Executor]
-    F --> G[Result Set]
+fn main() {
+    volcano_optimizer_example();
+}
 ```
-
-*Figure: Query Optimization and Execution Workflow*
-
----
 
 ## Appendices
 
 ### Glossary
 
-- **RDF (Resource Description Framework)**: A standard model for data interchange on the web, representing information as triples.
-- **SPARQL**: A query language and protocol for RDF, enabling complex queries across diverse data sources.
-- **Triple**: The fundamental unit of RDF data, comprising a subject, predicate, and object.
-- **Dictionary Encoding**: A mechanism to map string terms to unique numerical identifiers for efficient storage and comparison.
-- **Indexing**: The process of creating data structures that allow for quick retrieval of information based on specific keys.
-- **SIMD (Single Instruction, Multiple Data)**: A parallel computing method that performs the same operation on multiple data points simultaneously.
-- **Rayon**: A Rust library for data parallelism, simplifying the execution of operations across multiple threads.
-- **CUDA**: A parallel computing platform and API model created by NVIDIA, allowing for general-purpose computing on GPUs.
-- **Volcano Optimizer**: A cost-based query optimizer that explores and selects the most efficient physical execution plan for a given logical query.
-- **Logical Operator**: An abstract representation of query operations that define the intent without specifying execution strategies.
-- **Physical Operator**: A concrete implementation of a query operation, detailing how it is executed against the data.
+- **Logical Operator:** An abstract representation of a query operation (e.g., scan, filter, join) that captures the intent of the query without prescribing how it is executed.
+- **Physical Operator:** A concrete implementation of a query operation detailing how data is accessed and processed.
+- **Cost-Based Optimizer:** A system that evaluates different execution plans based on estimated costs and selects the plan expected to perform best.
+- **Volcano Optimizer:** A query optimization framework that systematically explores alternative execution plans, inspired by the Volcano project.
 
 ### Further Reading
 
 - [SPARQL Query Language for RDF](https://www.w3.org/TR/sparql11-query/)
-- [Nom: Parser Combinator Framework](https://github.com/Geal/nom)
-- [Rayon: Data Parallelism in Rust](https://github.com/rayon-rs/rayon)
-- [SIMD Programming in Rust](https://doc.rust-lang.org/std/simd/)
-- [CUDA Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html)
 - [The Volcano Optimizer: A Practical Query Optimizer for Relational Databases](https://www.cs.toronto.edu/~rgrosse/courses/csc458-s12/readings/volcano.pdf)

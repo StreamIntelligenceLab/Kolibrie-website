@@ -7,29 +7,16 @@
     - [ABox (Assertional Box)](#abox-assertional-box)
     - [TBox (Terminological Box)](#tbox-terminological-box)
 3. [Triple Patterns and Terms](#triple-patterns-and-terms)
-    - [Term Enum](#term-enum)
-    - [TriplePattern Type](#triplepattern-type)
 4. [Rule-Based Inference](#rule-based-inference)
-    - [Rule Struct](#rule-struct)
-5. [KnowledgeGraph Struct](#knowledgegraph-struct)
+5. [Overview of the Knowledge Graph](#overview-of-the-knowledge-graph)
 6. [Core Functionalities](#core-functionalities)
-    - [Adding TBox and ABox Triples](#adding-tbox-and-abox-triples)
-    - [Querying ABox and TBox](#querying-abox-and-tbox)
+    - [Adding Triples](#adding-triples)
+    - [Querying the Graph](#querying-the-graph)
     - [Rule Management and Inference](#rule-management-and-inference)
 7. [Backward Chaining](#backward-chaining)
-    - [Backward Chaining Methods](#backward-chaining-methods)
-    - [Helper Functions](#helper-functions)
-8. [Mermaid Diagram: Knowledge Graph and Inference](#mermaid-diagram-knowledge-graph-and-inference)
-9. [Example Usage](#example-usage)
+8. [Example Usage](#example-usage)
     - [Knowledge Graph Inference Example](#knowledge-graph-inference-example)
-        - [Step 1: Initialize the Knowledge Graph](#step-1-initialize-the-knowledge-graph)
-        - [Step 2: Define and Add a Rule](#step-2-define-and-add-a-rule)
-        - [Step 3: Perform Inference](#step-3-perform-inference)
-10. [Diagrams](#diagrams)
-    - [System Architecture Diagram](#system-architecture-diagram)
-    - [Query Execution Flow](#query-execution-flow)
-    - [Knowledge Graph Inference Flow](#knowledge-graph-inference-flow)
-11. [Appendices](#appendices)
+9. [Appendices](#appendices)
     - [Glossary](#glossary)
     - [Further Reading](#further-reading)
 
@@ -37,244 +24,104 @@
 
 ## Introduction
 
-The **Knowledge Graph** module is a pivotal component of the Kolibrie Database Engine, enabling the representation, querying, and inference of knowledge through structured triples. This section provides a detailed overview of the Knowledge Graph's architecture, its fundamental concepts, and the mechanisms employed to facilitate sophisticated knowledge representation and reasoning.
+The Knowledge Graph module provides a flexible and powerful way to represent and reason about information in the form of triples. By supporting both instance-level data (ABox) and schema-level information (TBox), the module allows you to build rich knowledge representations and perform inference based on dynamic rules.
 
-### ABox and TBox
+## ABox and TBox
 
-In the realm of knowledge representation, the **ABox** (Assertional Box) and **TBox** (Terminological Box) are fundamental constructs derived from Description Logics. They serve distinct yet complementary roles within the Knowledge Graph.
+### ABox (Assertional Box)
 
-- **ABox (Assertional Box)**: Contains assertions about individuals, representing specific instances and their relationships. These are concrete data points that embody the factual knowledge within the graph.
+The ABox contains assertions about individual entities. These assertions represent concrete facts—for example, stating that "Alice is a Person" or "Bob is the parent of Charlie."
 
-    ```rust
-    pub abox: BTreeSet<Triple>, // ABox: Assertions about individuals (instances)
-    ```
+### TBox (Terminological Box)
 
-- **TBox (Terminological Box)**: Encapsulates the schema-level information, defining concepts (classes) and relationships (properties) that govern the structure of the knowledge. It establishes the ontology that provides semantic context to the ABox.
+The TBox defines the schema or ontology of your data. It includes definitions of concepts and relationships (such as class hierarchies) that provide context for the instance data in the ABox.
 
-    ```rust
-    pub tbox: BTreeSet<Triple>, // TBox: Concepts and relationships (schema)
-    ```
+## Triple Patterns and Terms
 
-### Triple Patterns and Terms
+The system represents information as triples (subject, predicate, object). For querying and rule specification, triple patterns are used. These patterns use a general notion of terms—where some elements are fixed (constants) and others are placeholders (variables) that can be bound during query execution.
 
-To facilitate flexible and expressive querying, the Knowledge Graph utilizes **Triple Patterns** and a robust **Term** representation.
+## Rule-Based Inference
 
-#### Term Enum
+Rule-based inference enables the derivation of new information from existing data. A rule typically consists of one or more premise patterns and a conclusion pattern. When the premises are matched against the data, the corresponding conclusion is inferred and can be added to the graph.
 
-The `Term` enum distinguishes between variables and constants within triple patterns, enabling pattern matching and variable bindings during query execution.
+## Overview of the Knowledge Graph
 
-```rust
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Term {
-    Variable(String),
-    Constant(u32),
-}
-```
+At a high level, the Knowledge Graph module encapsulates:
+- **ABox:** The set of instance-level facts.
+- **TBox:** The schema or ontology information.
+- **Rules:** Dynamic rules used to infer additional facts.
+- **A Dictionary:** An internal mapping mechanism to efficiently manage and encode terms.
 
-- **Variable**: Represents a placeholder that can be bound to different constants during pattern matching.
-- **Constant**: Encapsulates encoded string terms (using the `Dictionary`) that correspond to specific subjects, predicates, or objects.
+All internal relationships among these components are hidden from the user, providing a simple and intuitive interface for managing your knowledge.
 
-#### TriplePattern Type
+## Core Functionalities
 
-A `TriplePattern` is a tuple of three `Term` instances, representing the subject, predicate, and object of a pattern within queries or rules.
+### Adding Triples
+
+The module allows you to add triples to both the TBox (for schema information) and the ABox (for instance data). For example, you might add a triple to specify that "Person" is a subclass of "Agent" or assert that "Alice" is a "Person."
 
 ```rust
-pub type TriplePattern = (Term, Term, Term);
+let mut kg = KnowledgeGraph::new();
+kg.add_tbox_triple("Person", "rdfs:subClassOf", "Agent");
+kg.add_abox_triple("Alice", "rdf:type", "Person");
 ```
 
-### Rule-Based Inference
+### Querying the Graph
 
-The Knowledge Graph supports **Rule-Based Inference**, allowing the derivation of new knowledge based on predefined rules. This mechanism enhances the graph's capability to infer implicit knowledge from explicit assertions.
-
-#### Rule Struct
-
-A `Rule` comprises a set of premise patterns and a conclusion pattern. When the premises are satisfied by existing triples, the conclusion is inferred and added to the ABox.
+You can query both the ABox and TBox by specifying optional criteria (subject, predicate, object). This allows you to retrieve facts that match a particular pattern.
 
 ```rust
-#[derive(Debug, Clone)]
-pub struct Rule {
-    pub premise: Vec<TriplePattern>,
-    pub conclusion: TriplePattern,
-}
+let results = kg.query_abox(Some("Alice"), Some("rdf:type"), None);
 ```
 
-- **Premise**: A vector of `TriplePattern` instances that must be matched against the ABox.
-- **Conclusion**: A single `TriplePattern` that is inferred when the premises are satisfied.
+### Rule Management and Inference
 
-### KnowledgeGraph Struct
-
-The `KnowledgeGraph` struct encapsulates the ABox, TBox, dictionary, and a collection of dynamic rules. It provides methods to manage triples, add rules, and perform inference.
+Dynamic rules can be added to the Knowledge Graph. Once added, the system can infer new facts based on the rules and existing assertions.
 
 ```rust
-#[derive(Debug, Clone)]
-pub struct KnowledgeGraph {
-    pub abox: BTreeSet<Triple>, // ABox: Assertions about individuals (instances)
-    pub tbox: BTreeSet<Triple>, // TBox: Concepts and relationships (schema)
-    pub dictionary: Dictionary,
-    pub rules: Vec<Rule>, // List of dynamic rules
-}
-```
-
-### Core Functionalities
-
-#### Adding TBox and ABox Triples
-
-The Knowledge Graph allows the addition of triples to both the TBox and ABox, facilitating the construction of the schema and the assertion of specific facts.
-
-```rust
-/// Add a TBox triple (schema-level information)
-pub fn add_tbox_triple(&mut self, subject: &str, predicate: &str, object: &str)
-
-/// Add an ABox triple (instance-level information)
-pub fn add_abox_triple(&mut self, subject: &str, predicate: &str, object: &str)
-```
-
-- **Usage Example**:
-
-    ```rust
-    let mut kg = KnowledgeGraph::new();
-    kg.add_tbox_triple("Person", "rdfs:subClassOf", "Agent");
-    kg.add_abox_triple("Alice", "rdf:type", "Person");
-    ```
-
-#### Querying ABox and TBox
-
-The Knowledge Graph provides methods to query triples from both the ABox and TBox based on optional subject, predicate, and object criteria.
-
-```rust
-/// Query the ABox for instance-level assertions
-pub fn query_abox(
-    &mut self,
-    subject: Option<&str>,
-    predicate: Option<&str>,
-    object: Option<&str>,
-) -> Vec<Triple>
-
-/// Query the TBox for schema-level assertions
-pub fn query_tbox(
-    &mut self,
-    subject: Option<&str>,
-    predicate: Option<&str>,
-    object: Option<&str>,
-) -> Vec<Triple>
-```
-
-- **Usage Example**:
-
-    ```rust
-    let results = kg.query_abox(Some("Alice"), Some("rdf:type"), None);
-    ```
-
-#### Rule Management and Inference
-
-Dynamic rules can be added to the Knowledge Graph, enabling the system to infer new triples based on existing data.
-
-```rust
-/// Add a dynamic rule to the graph
-pub fn add_rule(&mut self, rule: Rule)
-
-/// Infer new facts based on dynamic rules
-pub fn infer_new_facts(&mut self) -> Vec<Triple>
-```
-
-- **Adding a Rule Example**:
-
-    ```rust
-    let rule = Rule {
-        premise: vec![
-            (
-                Term::Variable("x".to_string()),
-                Term::Constant(kg.dictionary.encode("rdf:type")),
-                Term::Constant(kg.dictionary.encode("Person")),
-            ),
-        ],
-        conclusion: (
+let rule = Rule {
+    premise: vec![
+        (
             Term::Variable("x".to_string()),
-            Term::Constant(kg.dictionary.encode("isHuman")),
-            Term::Constant(kg.dictionary.encode("true")),
+            Term::Constant(kg.dictionary.encode("rdf:type")),
+            Term::Constant(kg.dictionary.encode("Person")),
         ),
-    };
-    kg.add_rule(rule);
-    ```
+    ],
+    conclusion: (
+        Term::Variable("x".to_string()),
+        Term::Constant(kg.dictionary.encode("isHuman")),
+        Term::Constant(kg.dictionary.encode("true")),
+    ),
+};
+kg.add_rule(rule);
+```
 
-- **Performing Inference**:
-
-    ```rust
-    let inferred = kg.infer_new_facts();
-    ```
-
-### Backward Chaining
-
-The Knowledge Graph implements **Backward Chaining**, a reasoning technique where the system starts with a goal (query) and works backward to determine if the goal can be satisfied by existing data and rules.
-
-#### Backward Chaining Methods
+After adding rules, you can run the inference process to derive new facts.
 
 ```rust
-pub fn backward_chaining(&self, query: &TriplePattern) -> Vec<HashMap<String, Term>>
+let inferred_facts = kg.infer_new_facts();
 ```
 
-- **Description**: Initiates the backward chaining process for a given triple pattern, returning possible variable bindings that satisfy the query.
+## Backward Chaining
 
-#### Helper Functions
+Backward chaining is a reasoning method where the system starts from a query goal and works backward to determine if the goal can be satisfied by existing data and rules. The interface provides a function that returns possible variable bindings if a query pattern can be matched using backward reasoning.
 
-Several helper functions facilitate the unification and substitution processes essential for backward chaining:
-
-- **Unification**: Aligning patterns with existing triples to establish variable bindings.
-
-    ```rust
-    fn unify_patterns(
-        pattern1: &TriplePattern,
-        pattern2: &TriplePattern,
-        bindings: &HashMap<String, Term>,
-    ) -> Option<HashMap<String, Term>>
-    ```
-
-- **Substitution**: Replacing variables in patterns based on established bindings.
-
-    ```rust
-    fn substitute(pattern: &TriplePattern, bindings: &HashMap<String, Term>) -> TriplePattern
-    ```
-
-- **Renaming Variables**: Ensuring unique variable identifiers to prevent conflicts during inference.
-
-    ```rust
-    fn rename_rule_variables(rule: &Rule, counter: &mut usize) -> Rule
-    ```
-
-### Mermaid Diagram: Knowledge Graph and Inference
-
-The following Mermaid diagram illustrates the architecture of the Knowledge Graph and the inference process through rule-based reasoning.
-
-```mermaid
-graph TD
-    A[Knowledge Graph]
-    A --> B[ABox Assertions]
-    A --> C[TBox Schema]
-    A --> D[Dictionary]
-    A --> E[Rules]
-    
-    E --> F[Rule Premises]
-    E --> G[Rule Conclusions]
-    
-    F --> H[Triple Matching]
-    H --> I[Variable Bindings]
-    
-    I --> J[Inference Engine]
-    J --> K[Inferred Triples]
-    K --> B
+```rust
+let query = (
+    Term::Variable("X".to_string()),
+    Term::Constant(kg.dictionary.encode("ancestor")),
+    Term::Constant(kg.dictionary.encode("David")),
+);
+let results = kg.backward_chaining(&query);
 ```
-
-*Figure: Knowledge Graph and Inference Architecture*
-
----
 
 ## Example Usage
 
-This section demonstrates the practical application of the Knowledge Graph module through sample code snippets and their execution outcomes.
+Below are some practical examples that demonstrate how to use the Knowledge Graph module. The examples illustrate adding triples, defining rules, running inference, and querying the graph.
 
 ### Knowledge Graph Inference Example
 
-**Scenario**: Define a rule that infers the `isHuman` property for all individuals of type `Person`.
+**Scenario:** Infer that all individuals of type `Person` have the property `isHuman` set to `true`.
 
 #### Step 1: Initialize the Knowledge Graph
 
@@ -283,10 +130,10 @@ use crate::knowledge_graph::{KnowledgeGraph, Rule, Term};
 
 let mut kg = KnowledgeGraph::new();
 
-// Add TBox triples
+// Add schema (TBox) triples
 kg.add_tbox_triple("Person", "rdfs:subClassOf", "Agent");
 
-// Add ABox triples
+// Add instance (ABox) triples
 kg.add_abox_triple("Alice", "rdf:type", "Person");
 kg.add_abox_triple("Bob", "rdf:type", "Person");
 kg.add_abox_triple("Charlie", "rdf:type", "Agent");
@@ -310,7 +157,6 @@ let rule = Rule {
         Term::Constant(kg.dictionary.encode("true")),
     ),
 };
-
 kg.add_rule(rule);
 ```
 
@@ -320,7 +166,8 @@ kg.add_rule(rule);
 let inferred_facts = kg.infer_new_facts();
 
 for fact in inferred_facts {
-    println!("Inferred Triple -> Subject: {}, Predicate: {}, Object: {}",
+    println!(
+        "Inferred Triple -> Subject: {}, Predicate: {}, Object: {}",
         kg.dictionary.decode(fact.subject).unwrap(),
         kg.dictionary.decode(fact.predicate).unwrap(),
         kg.dictionary.decode(fact.object).unwrap()
@@ -328,129 +175,308 @@ for fact in inferred_facts {
 }
 ```
 
-**Expected Output**:
+**Expected Output:**
 
 ```
 Inferred Triple -> Subject: Alice, Predicate: isHuman, Object: true
 Inferred Triple -> Subject: Bob, Predicate: isHuman, Object: true
 ```
 
-**Explanation**: The rule identifies that "Alice" and "Bob" are of type "Person" and infers that they are human beings (`isHuman true`). "Charlie" is of type "Agent" but not "Person," so no inference is made for "Charlie."
-
----
-
-## Diagrams
-
-Visual representations are instrumental in elucidating the complex interactions and processes within the Kolibrie Database Engine. Below are key diagrams that complement the textual explanations provided in this documentation.
-
-### System Architecture Diagram
-
-```mermaid
-graph TD
-    A[RDF Data Sources] -->|Ingestion| B[SparqlDatabase]
-    B --> C[Dictionary]
-    B --> D[IndexManager]
-    D --> E[SubjectPredicate Index]
-    D --> F[PredicateSubject Index]
-    D --> G[SubjectObject Index]
-    D --> H[ObjectSubject Index]
-    D --> I[PredicateObject Index]
-    D --> J[ObjectPredicate Index]
-    B --> K[Query Parser]
-    K --> L[Query Executor]
-    L --> M[Parallel Processing Rayon]
-    L --> N[SIMD Optimizations]
-    L --> O[CUDA Integration]
-    B --> P[Stream Manager]
-    P --> Q[Sliding Window]
-    B --> R[UDFs]
-    B --> S[Knowledge Graph]
-    S --> T[ABox]
-    S --> U[TBox]
-    S --> V[Rules]
-    S --> W[Inference Engine]
-```
-
-*Figure: Comprehensive System Architecture*
-
-### Query Execution Flow
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Parser
-    participant IndexManager
-    participant Executor
-    participant Dictionary
-    participant TripleStore
-    participant KnowledgeGraph
-    participant InferenceEngine
-    
-    User->>Parser: Submit SPARQL Query
-    Parser->>Parser: Parse Query Syntax
-    Parser->>Executor: Generate Execution Plan
-    Executor->>IndexManager: Access Relevant Indexes
-    IndexManager->>TripleStore: Retrieve Matching Triples
-    IndexManager->>KnowledgeGraph: Access ABox and TBox
-    KnowledgeGraph->>InferenceEngine: Perform Inference if Needed
-    InferenceEngine-->>KnowledgeGraph: Return Inferred Triples
-    KnowledgeGraph-->>Executor: Provide Triples
-    IndexManager-->>Executor: Provide Triples
-    Executor->>Dictionary: Decode Terms
-    Executor->>Executor: Apply Filters and Aggregations
-    Executor-->>User: Return Query Results
-```
-
-*Figure: SPARQL Query Execution Flow*
-
-### Knowledge Graph Inference Flow
-
-```mermaid
-sequenceDiagram
-    participant KnowledgeGraph
-    participant Rule
-    participant ABox
-    participant InferenceEngine
-    
-    KnowledgeGraph->>Rule: Add Rule
-    Rule->>KnowledgeGraph: Define Premises and Conclusion
-    KnowledgeGraph->>ABox: Add Triples
-    ABox-->>KnowledgeGraph: Provide Existing Triples
-    KnowledgeGraph->>InferenceEngine: Invoke Inference
-    InferenceEngine->>Rule: Apply Rule Premises
-    InferenceEngine->>InferenceEngine: Generate Bindings
-    InferenceEngine->>KnowledgeGraph: Add Inferred Triples
-    KnowledgeGraph-->>InferenceEngine: Confirm Addition
-    InferenceEngine-->>KnowledgeGraph: Return Inferred Facts
-```
-
-*Figure: Knowledge Graph Inference Process*
-
----
+In this example, the rule detects that "Alice" and "Bob" are of type "Person" and infers that they possess the property `isHuman` with the value `true`. No inference is made for "Charlie" since "Charlie" is not of type "Person."
 
 ## Appendices
 
 ### Glossary
 
-- **RDF (Resource Description Framework)**: A standard model for data interchange on the web, representing information as triples.
-- **SPARQL**: A query language and protocol for RDF, enabling complex queries across diverse data sources.
-- **Triple**: The fundamental unit of RDF data, comprising a subject, predicate, and object.
-- **ABox (Assertional Box)**: Contains assertions about individuals, representing specific instances and their relationships.
-- **TBox (Terminological Box)**: Encapsulates schema-level information, defining concepts (classes) and relationships (properties).
-- **Triple Pattern**: A template consisting of terms (variables or constants) used for matching triples in queries or rules.
-- **Rule-Based Inference**: A reasoning technique where new knowledge is derived from existing data based on predefined rules.
-- **Backward Chaining**: A reasoning method that starts with a goal and works backward to determine if the goal can be satisfied by existing data and rules.
-- **Dictionary Encoding**: A mechanism to map string terms to unique numerical identifiers for efficient storage and comparison.
-- **Indexing**: The process of creating data structures that allow for quick retrieval of information based on specific keys.
-- **SIMD (Single Instruction, Multiple Data)**: A parallel computing method that performs the same operation on multiple data points simultaneously.
-- **Rayon**: A Rust library for data parallelism, simplifying the execution of operations across multiple threads.
-- **CUDA**: A parallel computing platform and API model created by NVIDIA, allowing for general-purpose computing on GPUs.
+- **RDF (Resource Description Framework):** A standard model for data interchange, where information is represented as triples.
+- **SPARQL:** A query language for RDF that allows the extraction of complex information.
+- **ABox (Assertional Box):** Contains factual assertions about individual entities.
+- **TBox (Terminological Box):** Contains schema-level definitions and relationships.
+- **Triple Pattern:** A template with variables and constants used to match triples.
+- **Rule-Based Inference:** The process of deriving new information based on predefined rules.
+- **Backward Chaining:** A reasoning approach that starts with a goal and works backward to validate it.
 
 ### Further Reading
 
 - [SPARQL Query Language for RDF](https://www.w3.org/TR/sparql11-query/)
-- [Nom: Parser Combinator Framework](https://github.com/Geal/nom)
-- [Rayon: Data Parallelism in Rust](https://github.com/rayon-rs/rayon)
-- [SIMD Programming in Rust](https://doc.rust-lang.org/std/simd/)
-- [CUDA Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html)
 - [Description Logics Primer](https://www.cs.ox.ac.uk/activities/logic/)
+
+---
+
+## Example Code
+
+Below are some representative code examples. They demonstrate how to use the module to add data, define rules, perform inference, and query results.
+
+### Datalog Example
+
+```rust
+use datalog::knowledge_graph::KnowledgeGraph;
+use shared::terms::Term;
+use shared::rule::Rule;
+
+fn main() {
+    let mut kg = KnowledgeGraph::new();
+
+    kg.add_abox_triple("Alice", "parent", "Bob");
+    kg.add_abox_triple("Bob", "parent", "Charlie");
+    kg.add_abox_triple("Charlie", "parent", "David");
+
+    let rule1 = Rule {
+        premise: vec![
+            (Term::Variable("X".to_string()), 
+             Term::Constant(kg.dictionary.encode("parent")), 
+             Term::Variable("Y".to_string())),
+        ],
+        conclusion: (Term::Variable("X".to_string()), 
+                     Term::Constant(kg.dictionary.encode("ancestor")), 
+                     Term::Variable("Y".to_string())),
+        filters: vec![],
+    };
+    
+    let rule2 = Rule {
+        premise: vec![
+            (Term::Variable("X".to_string()), 
+             Term::Constant(kg.dictionary.encode("parent")), 
+             Term::Variable("Y".to_string())),
+            (Term::Variable("Y".to_string()), 
+             Term::Constant(kg.dictionary.encode("ancestor")), 
+             Term::Variable("Z".to_string())),
+        ],
+        conclusion: (Term::Variable("X".to_string()), 
+                     Term::Constant(kg.dictionary.encode("ancestor")), 
+                     Term::Variable("Z".to_string())),
+        filters: vec![],
+    };
+    
+    kg.add_rule(rule1);
+    kg.add_rule(rule2);
+
+    let inferred_facts = kg.infer_new_facts_semi_naive();
+    for fact in inferred_facts {
+        println!("{:?}", kg.dictionary.decode_triple(&fact));
+    }
+    let query = (
+        Term::Variable("X".to_string()), 
+        Term::Constant(kg.dictionary.encode("ancestor")), 
+        Term::Constant(kg.dictionary.encode("David")),
+    );
+    
+    let results = kg.datalog_query_kg(&query);
+    
+    for result in results {
+        println!("Ancestor: {:?}", kg.dictionary.decode(*result.get("X").unwrap()));
+    }
+}
+```
+
+### Knowledge Graph Example
+
+```rust
+use shared::dictionary::Dictionary;
+use shared::terms::Term;
+use shared::rule::Rule;
+use datalog::knowledge_graph::*;
+use datalog::parser_n3_logic::parse_n3_rule;
+
+fn knowledge_graph() {
+    let mut graph = KnowledgeGraph::new();
+
+    // Add instance-level (ABox) triples
+    graph.add_abox_triple("Alice", "hasParent", "Bob");
+    graph.add_abox_triple("Bob", "hasParent", "Charlie");
+
+    // Define a rule: If X hasParent Y and Y hasParent Z, then X hasGrandparent Z
+    let grandparent_rule = Rule {
+        premise: vec![
+            (
+                Term::Variable("X".to_string()),
+                Term::Constant(graph.dictionary.encode("hasParent")),
+                Term::Variable("Y".to_string()),
+            ),
+            (
+                Term::Variable("Y".to_string()),
+                Term::Constant(graph.dictionary.encode("hasParent")),
+                Term::Variable("Z".to_string()),
+            ),
+        ],
+        conclusion: (
+            Term::Variable("X".to_string()),
+            Term::Constant(graph.dictionary.encode("hasGrandparent")),
+            Term::Variable("Z".to_string()),
+        ),
+        filters: vec![],
+    };
+
+    graph.add_rule(grandparent_rule);
+
+    let inferred_facts = graph.infer_new_facts();
+
+    for triple in inferred_facts {
+        println!(
+            "{} -- {} -- {}",
+            graph.dictionary.decode(triple.subject).unwrap(),
+            graph.dictionary.decode(triple.predicate).unwrap(),
+            graph.dictionary.decode(triple.object).unwrap()
+        );
+    }
+}
+
+fn backward_chaining() {
+    let mut dict = Dictionary::new();
+
+    let parent = dict.encode("parent");
+    let ancestor = dict.encode("ancestor");
+    let charlie = dict.encode("Charlie");
+
+    let mut kg = KnowledgeGraph::new();
+
+    // Add facts (ABox)
+    kg.add_abox_triple("Alice", "parent", "Bob");
+    kg.add_abox_triple("Bob", "parent", "Charlie");
+
+    // Define rules for inference
+    let rule1 = Rule {
+        // ancestor(X, Y) :- parent(X, Y)
+        premise: vec![(
+            Term::Variable("X".to_string()),
+            Term::Constant(parent),
+            Term::Variable("Y".to_string()),
+        )],
+        conclusion: (
+            Term::Variable("X".to_string()),
+            Term::Constant(ancestor),
+            Term::Variable("Y".to_string()),
+        ),
+        filters: vec![],
+    };
+
+    let rule2 = Rule {
+        // ancestor(X, Z) :- parent(X, Y), ancestor(Y, Z)
+        premise: vec![
+            (
+                Term::Variable("X".to_string()),
+                Term::Constant(parent),
+                Term::Variable("Y".to_string()),
+            ),
+            (
+                Term::Variable("Y".to_string()),
+                Term::Constant(ancestor),
+                Term::Variable("Z".to_string()),
+            ),
+        ],
+        conclusion: (
+            Term::Variable("X".to_string()),
+            Term::Constant(ancestor),
+            Term::Variable("Z".to_string()),
+        ),
+        filters: vec![],
+    };
+
+    kg.add_rule(rule1);
+    kg.add_rule(rule2);
+
+    let query = (
+        Term::Variable("A".to_string()),
+        Term::Constant(ancestor),
+        Term::Constant(charlie),
+    );
+
+    let results = kg.backward_chaining(&query);
+
+    for res in results {
+        if let Some(ancestor_term) = res.get("A") {
+            if let Term::Constant(ancestor_id) = resolve_term(ancestor_term, &res) {
+                if let Some(ancestor_name) = dict.decode(ancestor_id) {
+                    println!("Ancestor: {}", ancestor_name);
+                }
+            }
+        }
+    }
+}
+
+fn test() {
+    let input = "@prefix test: <http://www.test.be/test#>.\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.\n{ ?s rdf:type test:SubClass. } => { ?s rdf:type test:SuperType. }";
+
+    let mut graph = KnowledgeGraph::new();
+
+    graph.add_abox_triple(
+        "http://example2.com/a",
+        "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+        "http://www.test.be/test#SubClass",
+    );
+
+    match parse_n3_rule(input, &mut graph) {
+        Ok((_, (prefixes, rule))) => {
+            println!("Parsed Prefixes:");
+            for (prefix, uri) in prefixes {
+                println!("{}: <{}>", prefix, uri);
+            }
+
+            println!("\nParsed Rule:");
+            println!("{:?}", rule);
+
+            graph.add_rule(rule);
+
+            let old_facts = graph.index_manager.query(None, None, None);
+
+            let inferred_facts = graph.infer_new_facts();
+
+            println!("\nOriginal and Inferred Facts:");
+            for triple in old_facts.iter().chain(inferred_facts.iter()) {
+                let s = graph.dictionary.decode(triple.subject).unwrap();
+                let p = graph.dictionary.decode(triple.predicate).unwrap();
+                let o = graph.dictionary.decode(triple.object).unwrap();
+                println!("<{}> -- <{}> -- <{}> .", s, p, o);
+            }
+        }
+        Err(error) => eprintln!("Failed to parse rule: {:?}", error),
+    }
+}
+
+fn test2() {
+    let mut kg = KnowledgeGraph::new();
+
+    let n3_rule = r#"@prefix ex: <http://example.org/family#>.
+{ ?x ex:hasParent ?y. ?y ex:hasSibling ?z. } => { ?x ex:hasUncleOrAunt ?z. }."#;
+
+    kg.add_abox_triple("John", "ex:hasParent", "Mary");
+    kg.add_abox_triple("Mary", "ex:hasSibling", "Robert");
+
+    match parse_n3_rule(&n3_rule, &mut kg) {
+        Ok((_, (prefixes, rule))) => {
+            println!("Parsed Prefixes:");
+            for (prefix, uri) in prefixes {
+                println!("{}: <{}>", prefix, uri);
+            }
+
+            println!("\nParsed Rule:");
+            println!("{:?}", rule);
+
+            kg.add_rule(rule);
+
+            let old_facts = kg.index_manager.query(None, None, None);
+
+            let inferred_facts = kg.infer_new_facts();
+
+            println!("\nOriginal and Inferred Facts:");
+            for triple in old_facts.iter().chain(inferred_facts.iter()) {
+                let s = kg.dictionary.decode(triple.subject).unwrap();
+                let p = kg.dictionary.decode(triple.predicate).unwrap();
+                let o = kg.dictionary.decode(triple.object).unwrap();
+                println!("<{}> <{}> <{}>.", s, p, o);
+            }
+        }
+        Err(error) => eprintln!("Failed to parse rule: {:?}", error),
+    }
+}
+
+fn main() {
+    knowledge_graph();
+    println!("=======================================");
+    backward_chaining();
+    println!("=======================================");
+    test();
+    println!("=======================================");
+    test2();
+}
+```
