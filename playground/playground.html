@@ -2264,7 +2264,7 @@ WHERE {
       setTimeout(() => {
         if (!checkKolibrieReady()) {
           // If not ready, show a loading message and keep checking
-          addTerminalMessage('⏳ Waiting for Kolibrie WASM engine to initialize...', 'info');
+          console.log('⏳ Waiting for Kolibrie WASM engine to initialize...', 'info');
           
           let checkCount = 0;
           const checkInterval = setInterval(() => {
