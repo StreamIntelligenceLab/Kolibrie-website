@@ -1,0 +1,2516 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Kolibrie Playground</title>
+
+  <!-- CodeMirror CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/dracula.min.css">
+
+  <!-- IBM Plex Mono Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap"
+    rel="stylesheet">
+
+  <!-- LZ-String for compression -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+
+  <style>
+    /* Reset & Base */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d1b3d 50%, #1a1a1a 100%);
+      color: #e0e0e0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+    }
+
+    /* Animated background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background:
+        radial-gradient(circle at 20% 50%, rgba(219, 88, 156, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(219, 88, 156, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 40% 80%, rgba(219, 88, 156, 0.08) 0%, transparent 50%);
+      animation: float 20s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translateY(0px) rotate(0deg);
+      }
+
+      33% {
+        transform: translateY(-20px) rotate(1deg);
+      }
+
+      66% {
+        transform: translateY(10px) rotate(-1deg);
+      }
+    }
+
+    /* Toolbar */
+    .toolbar {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      background: linear-gradient(90deg, rgba(43, 43, 43, 0.95) 0%, rgba(45, 27, 61, 0.95) 100%);
+      backdrop-filter: blur(10px);
+      padding: 0 16px;
+      height: 56px;
+      min-height: 56px;
+      border-bottom: 1px solid rgba(219, 88, 156, 0.3);
+      box-shadow: 0 2px 20px rgba(219, 88, 156, 0.1);
+      flex-shrink: 0;
+    }
+
+    .btn {
+      margin-right: 12px;
+      padding: 0 16px;
+      height: 36px;
+      line-height: 36px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #db589c;
+      background: linear-gradient(135deg, rgba(219, 88, 156, 0.1) 0%, rgba(219, 88, 156, 0.05) 100%);
+      border: 1px solid rgba(219, 88, 156, 0.4);
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(219, 88, 156, 0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .btn:hover {
+      background: linear-gradient(135deg, rgba(219, 88, 156, 0.2) 0%, rgba(219, 88, 156, 0.1) 100%);
+      border-color: rgba(219, 88, 156, 0.6);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(219, 88, 156, 0.2);
+    }
+
+    .btn:hover::before {
+      left: 100%;
+    }
+
+    .btn:active {
+      transform: translateY(0px);
+      background: rgba(219, 88, 156, 0.3);
+    }
+
+    .dropdown {
+      position: relative;
+    }
+
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: linear-gradient(135deg, rgba(43, 43, 43, 0.95) 0%, rgba(45, 27, 61, 0.95) 100%);
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(219, 88, 156, 0.4);
+      border-radius: 8px;
+      margin-top: 8px;
+      overflow: hidden;
+      z-index: 10;
+      box-shadow: 0 8px 32px rgba(219, 88, 156, 0.15);
+      animation: dropIn 0.2s ease-out;
+    }
+
+    @keyframes dropIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .dropdown.open .dropdown-menu {
+      display: block;
+    }
+
+    .dropdown-menu .item {
+      padding: 12px 16px;
+      cursor: pointer;
+      color: #e0e0e0;
+      transition: all 0.2s ease;
+      border-bottom: 1px solid rgba(219, 88, 156, 0.1);
+    }
+
+    .dropdown-menu .item:last-child {
+      border-bottom: none;
+    }
+
+    .dropdown-menu .item:hover {
+      background: rgba(219, 88, 156, 0.15);
+      color: #db589c;
+    }
+
+    /* Config Panel & Share Panel - Reuse styles */
+    .config-panel,
+    .share-panel {
+      position: fixed;
+      top: 0;
+      right: -350px;
+      width: 350px;
+      height: 100vh;
+      background: linear-gradient(135deg, rgba(26, 26, 26, 0.98) 0%, rgba(45, 27, 61, 0.98) 100%);
+      backdrop-filter: blur(20px);
+      border-left: 1px solid rgba(219, 88, 156, 0.3);
+      box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .config-panel.open,
+    .share-panel.open {
+      right: 0;
+    }
+
+    .config-header,
+    .share-header {
+      padding: 20px;
+      border-bottom: 1px solid rgba(219, 88, 156, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .config-title,
+    .share-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #db589c;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .config-close,
+    .share-close {
+      width: 32px;
+      height: 32px;
+      background: transparent;
+      border: 1px solid rgba(219, 88, 156, 0.4);
+      border-radius: 6px;
+      color: #db589c;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: all 0.2s ease;
+    }
+
+    .config-close:hover,
+    .share-close:hover {
+      background: rgba(219, 88, 156, 0.1);
+      border-color: rgba(219, 88, 156, 0.6);
+    }
+
+    .config-content,
+    .share-content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .config-section {
+      margin-bottom: 30px;
+    }
+
+    .config-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .config-section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #db589c;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 15px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(219, 88, 156, 0.2);
+    }
+
+    .config-item {
+      margin-bottom: 15px;
+    }
+
+    .config-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .config-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: #e0e0e0;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .config-control {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .config-btn {
+      width: 32px;
+      height: 32px;
+      background: transparent;
+      border: 1px solid rgba(219, 88, 156, 0.4);
+      border-radius: 6px;
+      color: #db589c;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .config-btn:hover {
+      background: rgba(219, 88, 156, 0.15);
+      border-color: rgba(219, 88, 156, 0.6);
+    }
+
+    .config-btn:active {
+      background: rgba(219, 88, 156, 0.25);
+    }
+
+    .config-value {
+      flex: 1;
+      text-align: center;
+      background: rgba(219, 88, 156, 0.1);
+      border: 1px solid rgba(219, 88, 156, 0.3);
+      border-radius: 6px;
+      padding: 8px 12px;
+      color: #e0e0e0;
+      font-size: 12px;
+      font-weight: 500;
+      min-width: 60px;
+    }
+
+    .config-select {
+      width: 100%;
+      background: rgba(219, 88, 156, 0.1);
+      border: 1px solid rgba(219, 88, 156, 0.4);
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: #e0e0e0;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .config-select:hover {
+      border-color: rgba(219, 88, 156, 0.6);
+      background: rgba(219, 88, 156, 0.15);
+    }
+
+    .config-select:focus {
+      border-color: #db589c;
+      box-shadow: 0 0 0 2px rgba(219, 88, 156, 0.2);
+    }
+
+    .config-select option {
+      background: #2d1b3d;
+      color: #e0e0e0;
+      padding: 8px;
+    }
+
+    /* Share Panel Specific Styles */
+    .share-url-container {
+      background: rgba(219, 88, 156, 0.05);
+      border: 1px solid rgba(219, 88, 156, 0.3);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .share-url-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #db589c;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .share-url-input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(219, 88, 156, 0.2);
+      border-radius: 6px;
+      padding: 12px;
+      color: #e0e0e0;
+      font-size: 11px;
+      font-family: 'IBM Plex Mono', monospace;
+      word-break: break-all;
+      resize: none;
+      outline: none;
+      margin-bottom: 12px;
+      min-height: 80px;
+    }
+
+    .share-url-input:focus {
+      border-color: rgba(219, 88, 156, 0.5);
+    }
+
+    .share-copy-btn {
+      width: 100%;
+      background: linear-gradient(135deg, rgba(219, 88, 156, 0.15) 0%, rgba(219, 88, 156, 0.1) 100%);
+      border: 1px solid rgba(219, 88, 156, 0.4);
+      border-radius: 6px;
+      padding: 12px;
+      color: #db589c;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .share-copy-btn:hover {
+      background: linear-gradient(135deg, rgba(219, 88, 156, 0.25) 0%, rgba(219, 88, 156, 0.15) 100%);
+      border-color: rgba(219, 88, 156, 0.6);
+    }
+
+    .share-copy-btn:active {
+      background: rgba(219, 88, 156, 0.3);
+    }
+
+    .share-copy-btn.copied {
+      background: linear-gradient(135deg, rgba(88, 219, 110, 0.15) 0%, rgba(88, 219, 110, 0.1) 100%);
+      border-color: rgba(88, 219, 110, 0.4);
+      color: #58db6e;
+    }
+
+    .share-info {
+      background: rgba(219, 88, 156, 0.03);
+      border: 1px solid rgba(219, 88, 156, 0.2);
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 11px;
+      color: rgba(219, 88, 156, 0.8);
+      line-height: 1.4;
+    }
+
+    /* Config overlay */
+    .config-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      z-index: 999;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .config-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* Main Container */
+    .main-container {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Editor Container - Now responsive */
+    #editor-container {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      min-height: 0;
+      /* Important for flex child */
+      background: linear-gradient(135deg, rgba(26, 26, 26, 0.95) 0%, rgba(45, 27, 61, 0.95) 100%);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    #editor-wrapper {
+      flex: 1;
+      min-height: 200px;
+      /* Reduced minimum height */
+      display: flex;
+      flex-direction: column;
+    }
+
+    #sparql-editor {
+      flex: 1;
+      border: none;
+      outline: none;
+      resize: none;
+    }
+
+    /* Resizer */
+    .resizer {
+      height: 4px;
+      background: linear-gradient(90deg, rgba(219, 88, 156, 0.3) 0%, rgba(219, 88, 156, 0.1) 50%, rgba(219, 88, 156, 0.3) 100%);
+      cursor: row-resize;
+      position: relative;
+      z-index: 3;
+      transition: background 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .resizer:hover {
+      background: linear-gradient(90deg, rgba(219, 88, 156, 0.5) 0%, rgba(219, 88, 156, 0.3) 50%, rgba(219, 88, 156, 0.5) 100%);
+    }
+
+    /* Terminal/Results Panel - Made more responsive */
+    #results-panel {
+      flex: 1;
+      min-height: 150px;
+      /* Reduced minimum height */
+      max-height: 50vh;
+      /* Maximum 50% of viewport height */
+      background: linear-gradient(135deg, rgba(20, 20, 20, 0.98) 0%, rgba(35, 20, 45, 0.98) 100%);
+      border-top: 1px solid rgba(219, 88, 156, 0.3);
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: blur(15px);
+    }
+
+    .results-header {
+      height: 36px;
+      min-height: 36px;
+      background: linear-gradient(90deg, rgba(30, 30, 30, 0.95) 0%, rgba(40, 25, 50, 0.95) 100%);
+      border-bottom: 1px solid rgba(219, 88, 156, 0.2);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #db589c;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      flex-shrink: 0;
+    }
+
+    .results-tabs {
+      display: flex;
+      gap: 8px;
+    }
+
+    .results-tab {
+      padding: 4px 12px;
+      background: rgba(219, 88, 156, 0.1);
+      border: 1px solid rgba(219, 88, 156, 0.3);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 11px;
+    }
+
+    .results-tab.active {
+      background: rgba(219, 88, 156, 0.2);
+      border-color: rgba(219, 88, 156, 0.5);
+    }
+
+    .results-tab:hover {
+      background: rgba(219, 88, 156, 0.15);
+    }
+
+    .results-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    .results-btn {
+      padding: 2px 8px;
+      background: transparent;
+      border: 1px solid rgba(219, 88, 156, 0.4);
+      border-radius: 3px;
+      color: rgba(219, 88, 156, 0.8);
+      cursor: pointer;
+      font-size: 10px;
+      transition: all 0.2s ease;
+    }
+
+    .results-btn:hover {
+      background: rgba(219, 88, 156, 0.1);
+      color: #db589c;
+    }
+
+    .results-content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: auto;
+      padding: 12px;
+      font-family: 'Fira Code', 'Monaco', 'Menlo', monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      color: #e0e0e0;
+      min-height: 0;
+      /* Important for flex child */
+      scrollbar-width: thin;
+      scrollbar-color: rgba(219, 88, 156, 0.5) rgba(219, 88, 156, 0.1);
+    }
+
+    /* Custom scrollbar styles */
+    .results-content::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    .results-content::-webkit-scrollbar-track {
+      background: rgba(219, 88, 156, 0.1);
+      border-radius: 4px;
+    }
+
+    .results-content::-webkit-scrollbar-thumb {
+      background: rgba(219, 88, 156, 0.5);
+      border-radius: 4px;
+    }
+
+    .results-content::-webkit-scrollbar-thumb:hover {
+      background: rgba(219, 88, 156, 0.7);
+    }
+
+    .results-content::-webkit-scrollbar-corner {
+      background: rgba(219, 88, 156, 0.1);
+    }
+
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      min-width: 600px;
+    }
+
+    .results-table th {
+      background: rgba(219, 88, 156, 0.15);
+      color: #db589c;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(219, 88, 156, 0.3);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      position: sticky;
+      top: 0;
+      white-space: nowrap;
+    }
+
+    .results-table td {
+      padding: 6px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 11px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 300px;
+    }
+
+    .results-table tr:hover {
+      background: rgba(219, 88, 156, 0.05);
+    }
+
+    .terminal-output {
+      color: #e0e0e0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      margin-bottom: 4px;
+    }
+
+    .terminal-success {
+      color: #a6e3a1;
+    }
+
+    .terminal-error {
+      color: #f38ba8;
+    }
+
+    .terminal-info {
+      color: #89dceb;
+    }
+
+    .terminal-warning {
+      color: #fab387;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(219, 88, 156, 0.3);
+      border-radius: 50%;
+      border-top-color: #db589c;
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Custom CodeMirror Theme */
+    .CodeMirror {
+      height: 100% !important;
+      width: 100% !important;
+      background: transparent !important;
+      color: #e0e0e0 !important;
+      font-family: 'IBM Plex Mono', 'Monaco', 'Menlo', monospace !important;
+      font-size: 14px !important;
+      line-height: 1.6 !important;
+      flex: 1;
+    }
+
+    .CodeMirror-gutters {
+      background: linear-gradient(135deg, rgba(219, 88, 156, 0.05) 0%, rgba(219, 88, 156, 0.02) 100%) !important;
+      border-right: 1px solid rgba(219, 88, 156, 0.2) !important;
+    }
+
+    .CodeMirror-linenumber {
+      color: rgba(219, 88, 156, 0.6) !important;
+    }
+
+    .CodeMirror-cursor {
+      border-left: 2px solid #db589c !important;
+    }
+
+    .CodeMirror-selected {
+      background: rgba(219, 88, 156, 0.2) !important;
+    }
+
+    .cm-keyword {
+      color: #db589c !important;
+      font-weight: 600 !important;
+    }
+
+    .cm-string {
+      color: #e8a87c !important;
+      font-weight: 500 !important;
+    }
+
+    .cm-comment {
+      color: #888 !important;
+      font-style: italic !important;
+    }
+
+    .cm-variable {
+      color: #f5c2e7 !important;
+      font-weight: 500 !important;
+    }
+
+    .cm-number {
+      color: #fab387 !important;
+      font-weight: 500 !important;
+    }
+
+    .cm-operator {
+      color: #db589c !important;
+    }
+
+    .cm-atom {
+      color: #cba6f7 !important;
+    }
+
+    .cm-def {
+      color: #f5c2e7 !important;
+      font-weight: 600 !important;
+    }
+
+    .cm-property {
+      color: #94e2d5 !important;
+    }
+
+    .cm-qualifier {
+      color: #f38ba8 !important;
+    }
+
+    .cm-builtin {
+      color: #fab387 !important;
+      font-weight: 500 !important;
+    }
+
+    .cm-meta {
+      color: #cdd6f4 !important;
+    }
+
+    .CodeMirror-activeline-background {
+      background: rgba(219, 88, 156, 0.08) !important;
+    }
+
+    .CodeMirror-matchingbracket {
+      background: rgba(219, 88, 156, 0.3) !important;
+      color: white !important;
+    }
+
+    /* Status bar at bottom */
+    .status-bar {
+      position: relative;
+      height: 24px;
+      min-height: 24px;
+      background: linear-gradient(90deg, rgba(43, 43, 43, 0.95) 0%, rgba(45, 27, 61, 0.95) 100%);
+      border-top: 1px solid rgba(219, 88, 156, 0.2);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 11px;
+      color: rgba(219, 88, 156, 0.8);
+      z-index: 2;
+      flex-shrink: 0;
+    }
+
+    /* Responsive breakpoints */
+    @media (max-height: 600px) {
+      .toolbar {
+        height: 48px;
+        min-height: 48px;
+      }
+
+      .btn {
+        height: 32px;
+        line-height: 32px;
+        font-size: 11px;
+        padding: 0 12px;
+      }
+
+      #editor-wrapper {
+        min-height: 150px;
+      }
+
+      #results-panel {
+        min-height: 120px;
+        max-height: 40vh;
+      }
+
+      .results-header {
+        height: 32px;
+        min-height: 32px;
+      }
+
+      .status-bar {
+        height: 20px;
+        min-height: 20px;
+        font-size: 10px;
+      }
+    }
+
+    @media (max-height: 480px) {
+      .toolbar {
+        height: 40px;
+        min-height: 40px;
+        padding: 0 8px;
+      }
+
+      .btn {
+        height: 28px;
+        line-height: 28px;
+        font-size: 10px;
+        padding: 0 8px;
+        margin-right: 8px;
+      }
+
+      #editor-wrapper {
+        min-height: 120px;
+      }
+
+      #results-panel {
+        min-height: 100px;
+        max-height: 35vh;
+      }
+
+      .results-header {
+        height: 28px;
+        min-height: 28px;
+        padding: 0 8px;
+      }
+
+      .results-content {
+        padding: 8px;
+        font-size: 11px;
+      }
+
+      .status-bar {
+        height: 18px;
+        min-height: 18px;
+        font-size: 9px;
+        padding: 0 8px;
+      }
+    }
+
+    /* Small height screens - ensure terminal is always visible */
+    @media (max-height: 400px) {
+      #editor-wrapper {
+        min-height: 100px;
+      }
+
+      #results-panel {
+        min-height: 80px;
+        max-height: 30vh;
+      }
+    }
+
+    /* Tools Panel Styles */
+    .tools-panel {
+      position: fixed;
+      top: 0;
+      right: -400px;
+      width: 400px;
+      height: 100vh;
+      background: linear-gradient(135deg, rgba(26, 26, 26, 0.98) 0%, rgba(45, 27, 61, 0.98) 100%);
+      backdrop-filter: blur(20px);
+      border-left: 1px solid rgba(219, 88, 156, 0.3);
+      box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tools-panel.open {
+      right: 0;
+    }
+
+    .tools-header {
+      padding: 20px;
+      border-bottom: 1px solid rgba(219, 88, 156, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .tools-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #db589c;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tools-close {
+      width: 32px;
+      height: 32px;
+      background: transparent;
+      border: 1px solid rgba(219, 88, 156, 0.4);
+      border-radius: 6px;
+      color: #db589c;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: all 0.2s ease;
+    }
+
+    .tools-close:hover {
+      background: rgba(219, 88, 156, 0.1);
+      border-color: rgba(219, 88, 156, 0.6);
+    }
+
+    .tools-content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .tools-section {
+      margin-bottom: 30px;
+    }
+
+    .tools-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .tools-section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #db589c;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(219, 88, 156, 0.2);
+    }
+
+    .tools-textarea {
+      width: 100%;
+      min-height: 200px;
+      max-height: 400px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(219, 88, 156, 0.3);
+      border-radius: 8px;
+      padding: 16px;
+      color: #e0e0e0;
+      font-size: 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      line-height: 1.5;
+      resize: vertical;
+      outline: none;
+      transition: all 0.2s ease;
+      white-space: pre;
+      overflow-wrap: normal;
+      overflow-x: auto;
+    }
+
+    .tools-textarea:focus {
+      border-color: rgba(219, 88, 156, 0.6);
+      background: rgba(0, 0, 0, 0.4);
+      box-shadow: 0 0 0 2px rgba(219, 88, 156, 0.2);
+    }
+
+    .tools-textarea::placeholder {
+      color: rgba(219, 88, 156, 0.5);
+      font-style: italic;
+    }
+
+    .tools-separator {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(219, 88, 156, 0.3), transparent);
+      margin: 30px 0;
+      position: relative;
+    }
+
+    .tools-separator::after {
+      content: '⚬';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(135deg, rgba(26, 26, 26, 0.98) 0%, rgba(45, 27, 61, 0.98) 100%);
+      color: rgba(219, 88, 156, 0.6);
+      padding: 0 15px;
+      font-size: 12px;
+    }
+
+    /* Ensure icons in tools buttons have the same size as text */
+    .tools-action-btn * {
+      font-size: inherit;
+    }
+
+    .tools-close * {
+      font-size: inherit;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="main-container">
+    <div class="toolbar">
+      <button class="btn" id="runBtn">▶ Run</button>
+
+      <!-- <div class="dropdown" id="profileDropdown">
+        <button class="btn">
+          Profile: <span id="currentProfile">DEV</span> ▾
+        </button>
+        <div class="dropdown-menu">
+          <div class="item" data-value="DEV">Development</div>
+          <div class="item" data-value="STABLE">Stable</div>
+          <div class="item" data-value="LTS">LTS</div>
+        </div>
+      </div> -->
+
+      <button class="btn" id="shareBtn" style="margin-left:auto;">↗ Share</button>
+      <button class="btn" id="toolsBtn">🔧 Tools</button>
+      <button class="btn" id="configBtn">⚙ Config</button>
+      <button class="btn" id="helpBtn">? Help</button>
+    </div>
+
+    <div id="editor-container">
+      <div id="editor-wrapper">
+        <textarea id="sparql-editor"></textarea>
+      </div>
+
+      <div class="resizer" id="resizer"></div>
+
+      <div id="results-panel">
+        <div class="results-header">
+          <div class="results-tabs">
+            <div class="results-tab active" data-tab="results">⬚ Results</div>
+          </div>
+          <div class="results-actions">
+            <button class="results-btn" id="clearResults">Clear</button>
+          </div>
+        </div>
+        <div class="results-content" id="results-content">
+          <div class="terminal-output terminal-info">🚀 SPARQL Playground Ready
+            💡 Click "RUN" to execute your query
+            📝 Use the editor above to write SPARQL queries
+
+            Example endpoints you can query:
+            • DBpedia: https://dbpedia.org/sparql
+            • Wikidata: https://query.wikidata.org/sparql
+            • Bio2RDF: https://bio2rdf.org/sparql
+          </div>
+        </div>
+      </div>
+
+      <div class="status-bar">
+        <span>Kolibrie Playground • Ready</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tools Panel -->
+  <div class="tools-panel" id="toolsPanel">
+    <div class="tools-header">
+      <div class="tools-title">🔧 Tools</div>
+      <button class="tools-close" id="toolsClose">×</button>
+    </div>
+    <div class="tools-content">
+      <div class="tools-section">
+        <div class="tools-section-title">📋 Rule Syntax</div>
+        <textarea class="tools-textarea" id="ruleTextarea" placeholder="Enter RULE syntax here...">PREFIX ex: <http://example.org#>
+RULE :OverheatingAlert(?room) :- 
+CONSTRUCT { 
+    ?room ex:overheatingAlert true .
+}
+WHERE { 
+    ?reading ex:room ?room ; 
+            ex:temperature ?temp
+    FILTER (?temp > 80)
+}</textarea>
+      </div>
+      
+      <div class="tools-separator"></div>
+      
+      <div class="tools-section">
+        <div class="tools-section-title">🗂️ RDF/XML</div>
+        <textarea class="tools-textarea" id="rdfTextarea" placeholder="Enter RDF/XML here..."><?xml version="1.0"?>
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+               xmlns:ex="http://example.org#">
+        <rdf:Description rdf:about="http://example.org#Room101">
+          <ex:temperature>75</ex:temperature>
+          <ex:room>Room101</ex:room>
+        </rdf:Description>
+        <rdf:Description rdf:about="http://example.org#Sensor1">
+          <ex:room>Room101</ex:room>
+          <ex:temperature>90</ex:temperature>
+        </rdf:Description>
+        <rdf:Description rdf:about="http://example.org#Room102">
+          <ex:temperature>35</ex:temperature>
+          <ex:room>Room102</ex:room>
+        </rdf:Description>
+        <rdf:Description rdf:about="http://example.org#Sensor2">
+          <ex:room>Room102</ex:room>
+          <ex:temperature>70</ex:temperature>
+        </rdf:Description>
+        <rdf:Description rdf:about="http://example.org#Room103">
+          <ex:temperature>45</ex:temperature>
+          <ex:room>Room103</ex:room>
+        </rdf:Description>
+        <rdf:Description rdf:about="http://example.org#Sensor3">
+          <ex:room>Room103</ex:room>
+          <ex:temperature>190</ex:temperature>
+        </rdf:Description>
+      </rdf:RDF></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Config Panel -->
+  <div class="config-overlay" id="configOverlay"></div>
+  <div class="config-panel" id="configPanel">
+    <div class="config-header">
+      <div class="config-title">⚙ Configuration</div>
+      <button class="config-close" id="configClose">×</button>
+    </div>
+    <div class="config-content">
+      <div class="config-section">
+        <div class="config-section-title">✎ Text Editor</div>
+        <div class="config-item">
+          <label class="config-label">Font Size</label>
+          <div class="config-control">
+            <button class="config-btn" id="editorFontDecrease">−</button>
+            <div class="config-value" id="editorFontSize">14px</div>
+            <button class="config-btn" id="editorFontIncrease">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="config-section">
+        <div class="config-section-title">⚡ Results</div>
+        <div class="config-item">
+          <label class="config-label">Font Size</label>
+          <div class="config-control">
+            <button class="config-btn" id="terminalFontDecrease">−</button>
+            <div class="config-value" id="terminalFontSize">12px</div>
+            <button class="config-btn" id="terminalFontIncrease">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="config-section">
+        <div class="config-section-title">◐ Theme</div>
+        <div class="config-item">
+          <label class="config-label">Color Theme</label>
+          <select class="config-select" id="themeSelect">
+            <option value="default">Default (Fuchsia Midnight)</option>
+            <option value="blue">Ocean Blue</option>
+            <option value="green">Forest Green</option>
+            <option value="orange">Sunset Orange</option>
+            <option value="red">Ruby Red</option>
+            <option value="cyan">Cyber Cyan</option>
+            <option value="lightPurple">Light Purple</option>
+            <option value="lightBlue">Light Blue</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Share Panel -->
+  <div class="share-panel" id="sharePanel">
+    <div class="share-header">
+      <div class="share-title">↗ Share Query</div>
+      <button class="share-close" id="shareClose">×</button>
+    </div>
+    <div class="share-content">
+      <div class="share-url-container">
+        <div class="share-url-label">⧉ Shareable URL</div>
+        <textarea class="share-url-input" id="shareUrlInput" readonly placeholder="Generating URL..."></textarea>
+        <button class="share-copy-btn" id="shareCopyBtn">⧉ Copy to Clipboard</button>
+      </div>
+      <div class="share-info">
+        <strong>ⓘ About Sharing:</strong><br>
+        • Your SPARQL query is compressed and encoded in the URL<br>
+        • No data is sent to external servers<br>
+        • Share this URL with anyone to load your query<br>
+        • The URL works offline and is completely client-side
+      </div>
+    </div>
+  </div>
+
+  <!-- Kolibrie WASM Module -->
+  <script type="module">
+    import init, { SparqlDatabase } from './kolibrie.js';
+    
+    let wasmModule;
+    let sparqlDatabase;
+
+    async function initKolibrie() {
+      try {
+        // Initialize with proper module parameter structure
+        wasmModule = await init({ module_or_path: './kolibrie_bg.wasm' });
+        sparqlDatabase = new SparqlDatabase();
+        console.log('Kolibrie WASM initialized successfully');
+        
+        // Make available globally
+        window.kolibrie = {
+          SparqlDatabase,
+          database: sparqlDatabase,
+          module: wasmModule
+        };
+        
+        // Set the ready flag immediately
+        window.kolibrieDatabaseReady = true;
+        
+        // Trigger event to notify main script
+        window.dispatchEvent(new CustomEvent('kolibrie-ready'));
+        
+        // Also trigger a delayed event to ensure everything is ready
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('kolibrie-fully-ready'));
+        }, 100);
+        
+      } catch (error) {
+        console.error('Failed to initialize Kolibrie WASM:', error);
+        window.kolibrieDatabaseReady = false;
+        // Also dispatch error event
+        window.dispatchEvent(new CustomEvent('kolibrie-error', { detail: error }));
+      }
+    }
+
+    // Initialize immediately
+    initKolibrie();
+    
+    // Also expose initialization function globally for debugging
+    window.initKolibrie = initKolibrie;
+  </script>
+
+  <!-- CodeMirror JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/sparql/sparql.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/matchbrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/selection/active-line.min.js"></script>
+
+  <script>
+    let currentTab = 'results';
+    let isResizing = false;
+    let editor;
+    let kolibrieDatabaseReady = false;
+
+    // Configuration state
+    let config = {
+      editorFontSize: 14,
+      terminalFontSize: 12,
+      theme: 'default'
+    };
+
+    // Theme configurations
+    const themes = {
+      default: {
+        primary: '#db589c',
+        primaryRgb: '219, 88, 156',
+        name: 'Default (Fuchsia Midnight)',
+        isLight: false
+      },
+      blue: {
+        primary: '#58a6db',
+        primaryRgb: '88, 166, 219',
+        name: 'Ocean Blue',
+        isLight: false
+      },
+      green: {
+        primary: '#58db6e',
+        primaryRgb: '88, 219, 110',
+        name: 'Forest Green',
+        isLight: false
+      },
+      orange: {
+        primary: '#db9c58',
+        primaryRgb: '219, 156, 88',
+        name: 'Sunset Orange',
+        isLight: false
+      },
+      red: {
+        primary: '#db5858',
+        primaryRgb: '219, 88, 88',
+        name: 'Ruby Red',
+        isLight: false
+      },
+      cyan: {
+        primary: '#58dbdb',
+        primaryRgb: '88, 219, 219',
+        name: 'Cyber Cyan',
+        isLight: false
+      },
+      lightPurple: {
+        primary: '#8b5cf6',
+        primaryRgb: '139, 92, 246',
+        name: 'Light Purple',
+        isLight: true
+      },
+      lightBlue: {
+        primary: '#3b82f6',
+        primaryRgb: '59, 130, 246',
+        name: 'Light Blue',
+        isLight: true
+      }
+    };
+
+    // URL Encoding/Decoding Functions
+    function encodeQuery(query) {
+      try {
+        // Compress the query using LZ-String
+        const compressed = LZString.compressToEncodedURIComponent(query);
+        return compressed;
+      } catch (error) {
+        console.error('Error encoding query:', error);
+        return null;
+      }
+    }
+
+    function decodeQuery(encoded) {
+      try {
+        // Decompress the query using LZ-String
+        const decompressed = LZString.decompressFromEncodedURIComponent(encoded);
+        return decompressed;
+      } catch (error) {
+        console.error('Error decoding query:', error);
+        return null;
+      }
+    }
+
+    function generateShareUrl(query) {
+      const encoded = encodeQuery(query);
+      if (encoded) {
+        const baseUrl = window.location.origin + window.location.pathname;
+        return `${baseUrl}#code/${encoded}`;
+      }
+      return null;
+    }
+
+    function loadQueryFromUrl() {
+      const hash = window.location.hash;
+      if (hash.startsWith('#code/')) {
+        const encoded = hash.substring(6); // Remove '#code/' prefix
+        const query = decodeQuery(encoded);
+        if (query && editor) {
+          editor.setValue(query);
+          addTerminalMessage('📥 Query loaded from shared URL', 'success');
+        }
+      }
+    }
+
+    // Global helper function - defined early to avoid reference errors
+    function addTerminalMessage(message, type = 'info') {
+      const content = document.getElementById('results-content');
+      if (!content) {
+        console.log(`[${type}] ${message}`);
+        return;
+      }
+      
+      const timestamp = new Date().toLocaleTimeString();
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `terminal-output terminal-${type}`;
+      messageDiv.textContent = `[${timestamp}] ${message}`;
+      content.appendChild(messageDiv);
+      content.scrollTop = content.scrollHeight;
+    }
+
+    // Kolibrie helper functions
+    function loadRdfDataIntoDatabase() {
+      console.log('loadRdfDataIntoDatabase called. Ready:', kolibrieDatabaseReady, 'Window kolibrie:', !!window.kolibrie);
+      
+      if (!kolibrieDatabaseReady || !window.kolibrie || !window.kolibrie.SparqlDatabase) {
+        addTerminalMessage('⏳ WASM engine not ready yet', 'warning');
+        return false;
+      }
+      
+      const rdfTextarea = document.getElementById('rdfTextarea');
+      if (!rdfTextarea) return false;
+      
+      const rdfData = rdfTextarea.value.trim();
+      
+      if (rdfData) {
+        try {
+          // Create a fresh database instance
+          window.kolibrie.database = new window.kolibrie.SparqlDatabase();
+          
+          // Use parse_rdf_simple for single-threaded RDF/XML parsing
+          console.log('📊 Loading RDF/XML data (single-threaded)...', 'info');
+          window.kolibrie.database.parse_rdf_simple(rdfData);
+          console.log('✅ Successfully loaded RDF data using parse_rdf_simple', 'success');
+          
+          // Test a simple query to verify data loading
+          try {
+            const testQuery = "SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 5";
+            const testResult = window.kolibrie.database.execute_sparql_query(testQuery);
+            console.log('Test query result:', testResult);
+            const parsedTestResult = JSON.parse(testResult);
+            console.log(`🔍 Verified: ${parsedTestResult.length || 0} sample triples loaded`, 'info');
+          } catch (testError) {
+            console.warn('Test query failed:', testError);
+            addTerminalMessage(`⚠️ Data verification failed: ${testError.message}`, 'warning');
+          }
+          
+          return true;
+          
+        } catch (error) {
+          console.error('RDF loading error:', error);
+          addTerminalMessage(`❌ Failed to load RDF data: ${error.message || 'WASM error'}`, 'error');
+          return false;
+        }
+      }
+      return false;
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      // Initialize CodeMirror
+      editor = CodeMirror.fromTextArea(document.getElementById('sparql-editor'), {
+        mode: 'application/sparql-query',
+        theme: 'default',
+        lineNumbers: true,
+        matchBrackets: true,
+        styleActiveLine: true,
+        indentUnit: 2,
+        tabSize: 2,
+        lineWrapping: false,
+        autoCloseBrackets: true,
+        value: `# Kolibrie SPARQL + RULE Example
+PREFIX ex: <http://example.org#>
+
+SELECT ?room
+WHERE {
+  RULE(:OverheatingAlert, ?room)
+}`
+      });
+
+      // Set initial value
+      editor.setValue(`# Kolibrie SPARQL + RULE Example
+PREFIX ex: <http://example.org#>
+
+SELECT ?room
+WHERE {
+  RULE(:OverheatingAlert, ?room)
+}`);
+
+      // Focus the editor
+      editor.focus();
+
+      // Load saved configuration
+      loadConfig();
+
+      // Load query from URL if present
+      loadQueryFromUrl();
+
+      // Update status bar on changes
+      editor.on('change', () => {
+        const lines = editor.lineCount();
+        const cursor = editor.getCursor();
+        document.querySelector('.status-bar span').textContent =
+          `SPARQL Editor • Line ${cursor.line + 1}, Column ${cursor.ch + 1} • ${lines} lines`;
+      });
+
+      // Config panel functionality
+      document.getElementById('configBtn').addEventListener('click', () => {
+        // Close share panel if open
+        document.getElementById('sharePanel').classList.remove('open');
+        document.getElementById('configPanel').classList.add('open');
+        document.getElementById('configOverlay').classList.add('open');
+      });
+
+      document.getElementById('configClose').addEventListener('click', closeConfig);
+      document.getElementById('configOverlay').addEventListener('click', closeConfig);
+
+      function closeConfig() {
+        document.getElementById('configPanel').classList.remove('open');
+        document.getElementById('sharePanel').classList.remove('open');
+        document.getElementById('toolsPanel').classList.remove('open');
+        document.getElementById('configOverlay').classList.remove('open');
+      }
+
+      // Share panel functionality
+      document.getElementById('shareBtn').addEventListener('click', () => {
+        // Close config panel if open
+        document.getElementById('configPanel').classList.remove('open');
+
+        const query = editor.getValue();
+        const shareUrl = generateShareUrl(query);
+
+        if (shareUrl) {
+          document.getElementById('shareUrlInput').value = shareUrl;
+          document.getElementById('sharePanel').classList.add('open');
+          document.getElementById('configOverlay').classList.add('open');
+
+          // Reset copy button state
+          const copyBtn = document.getElementById('shareCopyBtn');
+          copyBtn.textContent = '📋 Copy to Clipboard';
+          copyBtn.classList.remove('copied');
+        } else {
+          addTerminalMessage('❌ Failed to generate share URL', 'error');
+        }
+      });
+
+      document.getElementById('shareClose').addEventListener('click', closeConfig);
+
+      // Copy to clipboard functionality
+      document.getElementById('shareCopyBtn').addEventListener('click', async () => {
+        const urlInput = document.getElementById('shareUrlInput');
+        const copyBtn = document.getElementById('shareCopyBtn');
+
+        try {
+          await navigator.clipboard.writeText(urlInput.value);
+          copyBtn.textContent = '✅ Copied!';
+          copyBtn.classList.add('copied');
+          addTerminalMessage('📋 Share URL copied to clipboard', 'success');
+
+          // Reset button after 2 seconds
+          setTimeout(() => {
+            copyBtn.textContent = '📋 Copy to Clipboard';
+            copyBtn.classList.remove('copied');
+          }, 2000);
+        } catch (error) {
+          // Fallback for browsers that don't support clipboard API
+          urlInput.select();
+          document.execCommand('copy');
+          copyBtn.textContent = '✅ Copied!';
+          copyBtn.classList.add('copied');
+          addTerminalMessage('📋 Share URL copied to clipboard', 'success');
+
+          setTimeout(() => {
+            copyBtn.textContent = '📋 Copy to Clipboard';
+            copyBtn.classList.remove('copied');
+          }, 2000);
+        }
+      });
+
+      // Editor font size controls
+      document.getElementById('editorFontDecrease').addEventListener('click', () => {
+        if (config.editorFontSize > 8) {
+          config.editorFontSize--;
+          updateEditorFontSize();
+          saveConfig();
+        }
+      });
+
+      document.getElementById('editorFontIncrease').addEventListener('click', () => {
+        if (config.editorFontSize < 24) {
+          config.editorFontSize++;
+          updateEditorFontSize();
+          saveConfig();
+        }
+      });
+
+      // Terminal font size controls
+      document.getElementById('terminalFontDecrease').addEventListener('click', () => {
+        if (config.terminalFontSize > 8) {
+          config.terminalFontSize--;
+          updateTerminalFontSize();
+          saveConfig();
+        }
+      });
+
+      document.getElementById('terminalFontIncrease').addEventListener('click', () => {
+        if (config.terminalFontSize < 20) {
+          config.terminalFontSize++;
+          updateTerminalFontSize();
+          saveConfig();
+        }
+      });
+
+      // Theme selection
+      document.getElementById('themeSelect').addEventListener('change', (e) => {
+        config.theme = e.target.value;
+        updateTheme();
+        saveConfig();
+      });
+
+      function updateEditorFontSize() {
+        const fontSize = config.editorFontSize;
+        document.getElementById('editorFontSize').textContent = `${fontSize}px`;
+
+        // Update CodeMirror font size
+        const style = document.createElement('style');
+        style.id = 'editor-font-style';
+        const existingStyle = document.getElementById('editor-font-style');
+        if (existingStyle) {
+          existingStyle.remove();
+        }
+        style.textContent = `.CodeMirror { font-size: ${fontSize}px !important; }`;
+        document.head.appendChild(style);
+
+        editor.refresh();
+      }
+
+      function updateTerminalFontSize() {
+        const fontSize = config.terminalFontSize;
+        document.getElementById('terminalFontSize').textContent = `${fontSize}px`;
+
+        // Update terminal font size
+        const style = document.createElement('style');
+        style.id = 'terminal-font-style';
+        const existingStyle = document.getElementById('terminal-font-style');
+        if (existingStyle) {
+          existingStyle.remove();
+        }
+        style.textContent = `.results-content { font-size: ${fontSize}px !important; }`;
+        document.head.appendChild(style);
+      }
+
+      function updateTheme() {
+        const theme = themes[config.theme];
+        const style = document.createElement('style');
+        style.id = 'theme-style';
+        const existingStyle = document.getElementById('theme-style');
+        if (existingStyle) {
+          existingStyle.remove();
+        }
+
+        if (theme.isLight) {
+          // Light theme styles
+          style.textContent = `
+            :root {
+              --primary-color: ${theme.primary};
+              --primary-rgb: ${theme.primaryRgb};
+            }
+            
+            html, body {
+              background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #f8f9fa 100%) !important;
+              color: #333 !important;
+            }
+            
+            body::before {
+              background:
+                radial-gradient(circle at 20% 50%, rgba(${theme.primaryRgb}, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(${theme.primaryRgb}, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(${theme.primaryRgb}, 0.04) 0%, transparent 50%) !important;
+            }
+            
+            .toolbar {
+              background: linear-gradient(90deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.95) 100%) !important;
+              border-bottom-color: rgba(${theme.primaryRgb}, 0.2) !important;
+              box-shadow: 0 2px 20px rgba(${theme.primaryRgb}, 0.05) !important;
+            }
+            
+            .btn, .config-btn, .config-close, .results-btn, .share-close, .share-copy-btn, .tools-close { 
+              color: ${theme.primary} !important;
+              border-color: rgba(${theme.primaryRgb}, 0.3) !important;
+              background: rgba(${theme.primaryRgb}, 0.05) !important;
+            }
+            
+            .btn:hover, .config-btn:hover, .config-close:hover, .results-btn:hover, .share-close:hover, .share-copy-btn:hover, .tools-close:hover {
+              background: rgba(${theme.primaryRgb}, 0.1) !important;
+              border-color: rgba(${theme.primaryRgb}, 0.4) !important;
+              box-shadow: 0 4px 15px rgba(${theme.primaryRgb}, 0.1) !important;
+            }
+            
+            .btn:active, .config-btn:active, .share-copy-btn:active, .tools-action-btn:active { 
+              background: rgba(${theme.primaryRgb}, 0.15) !important;
+            }
+            
+            #editor-container {
+              background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.95) 100%) !important;
+            }
+            
+            .CodeMirror {
+              background: rgba(255, 255, 255, 0.8) !important;
+              color: #333 !important;
+            }
+            
+            .CodeMirror-gutters {
+              background: rgba(${theme.primaryRgb}, 0.03) !important;
+              border-right-color: rgba(${theme.primaryRgb}, 0.15) !important;
+            }
+            
+            .CodeMirror-linenumber {
+              color: rgba(${theme.primaryRgb}, 0.7) !important;
+            }
+            
+            .CodeMirror-cursor {
+              border-left-color: ${theme.primary} !important;
+            }
+            
+            .CodeMirror-selected {
+              background: rgba(${theme.primaryRgb}, 0.15) !important;
+            }
+            
+            .CodeMirror-activeline-background {
+              background: rgba(${theme.primaryRgb}, 0.05) !important;
+            }
+            
+            .cm-keyword, .cm-operator {
+              color: ${theme.primary} !important;
+            }
+            
+            .cm-string {
+              color: #d73502 !important;
+            }
+            
+            .cm-comment {
+              color: #6c757d !important;
+            }
+            
+            .cm-variable {
+              color: #6f42c1 !important;
+            }
+            
+            .cm-number {
+              color: #fd7e14 !important;
+            }
+            
+            #results-panel {
+              background: linear-gradient(135deg, rgba(248, 249, 250, 0.98) 0%, rgba(233, 236, 239, 0.98) 100%) !important;
+              border-top-color: rgba(${theme.primaryRgb}, 0.2) !important;
+            }
+            
+            .results-header {
+              background: linear-gradient(90deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.95) 100%) !important;
+              border-bottom-color: rgba(${theme.primaryRgb}, 0.2) !important;
+              color: ${theme.primary} !important;
+            }
+            
+            .results-content {
+              color: #333 !important;
+            }
+            
+            .results-tab {
+              background: rgba(${theme.primaryRgb}, 0.05) !important;
+              border-color: rgba(${theme.primaryRgb}, 0.2) !important;
+              color: #333 !important;
+            }
+            
+            .results-tab.active {
+              background: rgba(${theme.primaryRgb}, 0.1) !important;
+              border-color: rgba(${theme.primaryRgb}, 0.3) !important;
+              color: ${theme.primary} !important;
+            }
+            
+            .results-tab:hover {
+              background: rgba(${theme.primaryRgb}, 0.08) !important;
+            }
+            
+            .results-table th {
+              background: rgba(${theme.primaryRgb}, 0.08) !important;
+              color: ${theme.primary} !important;
+              border-bottom-color: rgba(${theme.primaryRgb}, 0.2) !important;
+            }
+
+            .results-table td {
+              border-bottom-color: rgba(0, 0, 0, 0.1) !important;
+              color: #333 !important;
+            }
+            
+            .results-table tr:hover {
+              background: rgba(${theme.primaryRgb}, 0.03) !important;
+            }
+            
+            .terminal-output {
+              color: #333 !important;
+            }
+            
+            .terminal-success {
+              color: #198754 !important;
+            }
+            
+            .terminal-error {
+              color: #dc3545 !important;
+            }
+            
+            .terminal-info {
+              color: #0f5132 !important;
+            }
+            
+            .terminal-warning {
+              color: #b45309 !important;
+            }
+            
+            .loading-spinner {
+              border-color: rgba(${theme.primaryRgb}, 0.3) !important;
+              border-top-color: ${theme.primary} !important;
+            }
+            
+            .status-bar span {
+              color: rgba(${theme.primaryRgb}, 0.8) !important;
+            }
+            
+            .share-info {
+              color: rgba(${theme.primaryRgb}, 0.8) !important;
+            }
+            
+            .config-panel, .share-panel, .tools-panel {
+              background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 249, 250, 0.98) 100%) !important;
+              border-left-color: rgba(${theme.primaryRgb}, 0.2) !important;
+              color: #333 !important;
+            }
+            
+            .config-title, .config-section-title, .share-title, .share-url-label, .tools-title, .tools-section-title {
+              color: ${theme.primary} !important;
+            }
+            
+            .config-label {
+              color: #495057 !important;
+            }
+            
+            .config-value, .config-select, .share-url-container, .share-url-input, .share-info {
+              background: rgba(${theme.primaryRgb}, 0.05) !important;
+              border-color: rgba(${theme.primaryRgb}, 0.2) !important;
+              color: #333 !important;
+            }
+            
+            .config-select:hover {
+              border-color: rgba(${theme.primaryRgb}, 0.4) !important;
+              background: rgba(${theme.primaryRgb}, 0.08) !important;
+            }
+            
+            .config-select:focus, .share-url-input:focus {
+              border-color: ${theme.primary} !important;
+              box-shadow: 0 0 0 2px rgba(${theme.primaryRgb}, 0.15) !important;
+            }
+            
+            .config-select option {
+              background: #fff !important;
+              color: #333 !important;
+            }
+            
+            .share-url-input {
+              background: rgba(0, 0, 0, 0.03) !important;
+            }
+            
+            .share-info {
+              color: rgba(${theme.primaryRgb}, 0.8) !important;
+            }
+            
+            .tools-action-btn {
+              background: linear-gradient(135deg, rgba(${theme.primaryRgb}, 0.08) 0%, rgba(${theme.primaryRgb}, 0.05) 100%) !important;
+              border-color: rgba(${theme.primaryRgb}, 0.3) !important;
+              color: ${theme.primary} !important;
+            }
+            
+            .tools-action-btn:hover {
+              background: linear-gradient(135deg, rgba(${theme.primaryRgb}, 0.15) 0%, rgba(${theme.primaryRgb}, 0.1) 100%) !important;
+              border-color: rgba(${theme.primaryRgb}, 0.4) !important;
+              box-shadow: 0 8px 25px rgba(${theme.primaryRgb}, 0.1) !important;
+            }
+            
+            .resizer {
+              background: linear-gradient(90deg, rgba(${theme.primaryRgb}, 0.2) 0%, rgba(${theme.primaryRgb}, 0.1) 50%, rgba(${theme.primaryRgb}, 0.2) 100%) !important;
+            }
+            
+            .resizer:hover {
+              background: linear-gradient(90deg, rgba(${theme.primaryRgb}, 0.3) 0%, rgba(${theme.primaryRgb}, 0.2) 50%, rgba(${theme.primaryRgb}, 0.3) 100%) !important;
+            }`
+        } else {
+          // Dark theme styles (existing)
+                   style.textContent = `
+            :root {
+              --primary-color: ${theme.primary};
+              --primary-rgb: ${theme.primaryRgb};
+            }
+            
+            .btn, .config-btn, .config-close, .results-btn, .share-close, .share-copy-btn, .tools-close { 
+              color: ${theme.primary} !important;
+              border-color: rgba(${theme.primaryRgb}, 0.4) !important;
+              background: linear-gradient(135deg, rgba(${theme.primaryRgb}, 0.1) 0%, rgba(${theme.primaryRgb}, 0.05) 100%) !important;
+            }
+            
+            .btn:hover, .config-btn:hover, .config-close:hover, .results-btn:hover, .share-close:hover, .share-copy-btn:hover, .tools-close:hover {
+              background: linear-gradient(135deg, rgba(${theme.primaryRgb}, 0.2) 0%, rgba(${theme.primaryRgb}, 0.1) 100%) !important;
+              border-color: rgba(${theme.primaryRgb}, 0.6) !important;
+              box-shadow: 0 4px 15px rgba(${theme.primaryRgb}, 0.2) !important;
+            }
+            
+            .btn:active, .config-btn:active, .share-copy-btn:active, .tools-action-btn:active { 
+              background: rgba(${theme.primaryRgb}, 0.3) !important;
+            }
+            
+            .dropdown-menu .item:hover, .dropdown-menu .item:hover { 
+              background: rgba(${theme.primaryRgb}, 0.15) !important;
+              color: ${theme.primary} !important;
+            }
+            
+            .config-title, .config-section-title, .results-header, .share-title, .share-url-label, .tools-title, .tools-section-title {
+              color: ${theme.primary} !important;
+            }
+            
+            .toolbar, .config-panel, .results-header, .status-bar, .share-panel, .tools-panel {
+              border-color: rgba(${theme.primaryRgb}, 0.3) !important;
+            }
+            
+            .results-tab {
+              background: rgba(${theme.primaryRgb}, 0.1) !important;
+              border-color: rgba(${theme.primaryRgb}, 0.3) !important;
+            }
+            
+            .results-tab.active {
+              background: rgba(${theme.primaryRgb}, 0.2) !important;
+              border-color: rgba(${theme.primaryRgb}, 0.5) !important;
+            }
+            
+            .results-tab:hover {
+              background: rgba(${theme.primaryRgb}, 0.15) !important;
+            }
+            
+            .config-value, .config-select, .share-url-container, .share-url-input, .share-info {
+              background: rgba(${theme.primaryRgb}, 0.1) !important;
+              border-color: rgba(${theme.primaryRgb}, 0.3) !important;
+            }
+            
+            .config-select:hover {
+              border-color: rgba(${theme.primaryRgb}, 0.6) !important;
+              background: rgba(${theme.primaryRgb}, 0.15) !important;
+            }
+            
+            .config-select:focus, .share-url-input:focus {
+              border-color: ${theme.primary} !important;
+              box-shadow: 0 0 0 2px rgba(${theme.primaryRgb}, 0.2) !important;
+            }
+            
+            .tools-action-btn {
+              background: linear-gradient(135deg, rgba(${theme.primaryRgb}, 0.15) 0%, rgba(${theme.primaryRgb}, 0.1) 100%) !important;
+              border-color: rgba(${theme.primaryRgb}, 0.4) !important;
+              color: ${theme.primary} !important;
+            }
+            
+            .tools-action-btn:hover {
+              background: linear-gradient(135deg, rgba(${theme.primaryRgb}, 0.25) 0%, rgba(${theme.primaryRgb}, 0.15) 100%) !important;
+              border-color: rgba(${theme.primaryRgb}, 0.6) !important;
+              box-shadow: 0 8px 25px rgba(${theme.primaryRgb}, 0.2) !important;
+            }
+            
+            .resizer {
+              background: linear-gradient(90deg, rgba(${theme.primaryRgb}, 0.3) 0%, rgba(${theme.primaryRgb}, 0.1) 50%, rgba(${theme.primaryRgb}, 0.3) 100%) !important;
+            }
+            
+            .resizer:hover {
+              background: linear-gradient(90deg, rgba(${theme.primaryRgb}, 0.5) 0%, rgba(${theme.primaryRgb}, 0.3) 50%, rgba(${theme.primaryRgb}, 0.5) 100%) !important;
+            }
+            
+            .CodeMirror-gutters {
+              background: linear-gradient(135deg, rgba(${theme.primaryRgb}, 0.05) 0%, rgba(${theme.primaryRgb}, 0.02) 100%) !important;
+              border-right-color: rgba(${theme.primaryRgb}, 0.2) !important;
+            }
+
+            .CodeMirror-linenumber {
+              color: rgba(${theme.primaryRgb}, 0.6) !important;
+            }
+
+            .CodeMirror-cursor {
+              border-left-color: ${theme.primary} !important;
+            }
+
+            .CodeMirror-selected {
+              background: rgba(${theme.primaryRgb}, 0.2) !important;
+            }
+
+            .CodeMirror-activeline-background {
+              background: rgba(${theme.primaryRgb}, 0.08) !important;
+            }
+
+            .CodeMirror-matchingbracket {
+              background: rgba(${theme.primaryRgb}, 0.3) !important;
+            }
+
+            .results-table th {
+              background: rgba(${theme.primaryRgb}, 0.15) !important;
+              color: ${theme.primary} !important;
+              border-bottom-color: rgba(${theme.primaryRgb}, 0.3) !important;
+            }
+
+            .results-table tr:hover {
+              background: rgba(${theme.primaryRgb}, 0.05) !important;
+            }
+
+            .loading-spinner {
+              border-color: rgba(${theme.primaryRgb}, 0.3) !important;
+              border-top-color: ${theme.primary} !important;
+            }
+            
+            .status-bar span {
+              color: rgba(${theme.primaryRgb}, 0.8) !important;
+            }
+            
+            .share-info {
+              color: rgba(${theme.primaryRgb}, 0.8) !important;
+            }
+          `;
+        }
+
+        document.head.appendChild(style);
+      }
+
+      function saveConfig() {
+        localStorage.setItem('sparql-playground-config', JSON.stringify(config));
+      }
+
+      function loadConfig() {
+        const saved = localStorage.getItem('sparql-playground-config');
+        if (saved) {
+          config = { ...config, ...JSON.parse(saved) };
+        }
+
+        // Update UI elements
+        document.getElementById('editorFontSize').textContent = `${config.editorFontSize}px`;
+        document.getElementById('terminalFontSize').textContent = `${config.terminalFontSize}px`;
+        document.getElementById('themeSelect').value = config.theme;
+
+        // Apply settings
+        updateEditorFontSize();
+        updateTerminalFontSize();
+        updateTheme();
+      }
+
+      // Resizer functionality with improved constraints
+      const resizer = document.getElementById('resizer');
+      const editorWrapper = document.getElementById('editor-wrapper');
+      const resultsPanel = document.getElementById('results-panel');
+
+      resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        document.addEventListener('mousemove', handleResize);
+        document.addEventListener('mouseup', stopResize);
+        e.preventDefault();
+      });
+
+      function handleResize(e) {
+        if (!isResizing) return;
+
+        const container = document.getElementById('editor-container');
+        const containerHeight = container.clientHeight - 24; // minus status bar
+        const containerTop = container.getBoundingClientRect().top;
+        const newEditorHeight = e.clientY - containerTop;
+        const newResultsHeight = containerHeight - newEditorHeight - 4; // minus resizer height
+
+        // More flexible constraints for different screen sizes
+        const minEditorHeight = window.innerHeight < 480 ? 100 : window.innerHeight < 600 ? 150 : 200;
+        const minResultsHeight = window.innerHeight < 480 ? 80 : window.innerHeight < 600 ? 120 : 150;
+
+        if (newEditorHeight > minEditorHeight && newResultsHeight > minResultsHeight) {
+          editorWrapper.style.flex = `0 0 ${newEditorHeight}px`;
+          resultsPanel.style.flex = `0 0 ${newResultsHeight}px`;
+          editor.refresh();
+        }
+      }
+
+      function stopResize() {
+        isResizing = false;
+        document.removeEventListener('mousemove', handleResize);
+        document.removeEventListener('mouseup', stopResize);
+      }
+
+      // Ensure terminal is visible on window resize
+      window.addEventListener('resize', () => {
+        // Reset flex properties if they become problematic
+        const editorHeight = editorWrapper.offsetHeight;
+        const resultsHeight = resultsPanel.offsetHeight;
+        const totalHeight = editorHeight + resultsHeight + 4; // + resizer
+        const containerHeight = document.getElementById('editor-container').clientHeight - 24;
+
+        if (totalHeight > containerHeight) {
+          // Reset to default flex values
+          editorWrapper.style.flex = '1';
+          resultsPanel.style.flex = '1';
+        }
+
+        setTimeout(() => editor.refresh(), 100);
+      });
+
+      // Results actions
+      document.getElementById('clearResults').addEventListener('click', () => {
+        document.getElementById('results-content').innerHTML =
+          '<div class="terminal-output terminal-info">Results cleared.</div>';
+      });
+
+      document.getElementById("helpBtn").onclick = () => {
+        document.getElementById('results-content').innerHTML = `
+          <div class="terminal-output terminal-info">❓ SPARQL Help & Documentation
+
+<strong>Basic SPARQL Query Structure:</strong>
+PREFIX prefix: &lt;URI&gt;
+SELECT ?variable
+WHERE {
+  ?subject ?predicate ?object .
+}
+
+<strong>Common Prefixes:</strong>
+• rdf: &lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#&gt;
+• rdfs: &lt;http://www.w3.org/2000/01/rdf-schema#&gt;
+• foaf: &lt;http://xmlns.com/foaf/0.1/&gt;
+
+<strong>Query Types:</strong>
+• SELECT - Retrieve data
+• CONSTRUCT - Build new triples
+• ASK - Yes/no questions
+• DESCRIBE - Describe resources
+          </div>
+        `;
+      };
+
+      // Tools panel functionality
+      document.getElementById('toolsBtn').addEventListener('click', () => {
+        // Close other panels if open
+        document.getElementById('configPanel').classList.remove('open');
+        document.getElementById('sharePanel').classList.remove('open');
+        
+        document.getElementById('toolsPanel').classList.add('open');
+        document.getElementById('configOverlay').classList.add('open');
+      });
+
+      document.getElementById('toolsClose').addEventListener('click', closeConfig);
+
+      // RUN button functionality - connect to Kolibrie execution
+      document.getElementById("runBtn").onclick = () => {
+        console.log('Run button clicked. Ready state:', kolibrieDatabaseReady, 'Window kolibrie:', !!window.kolibrie);
+        
+        if (!kolibrieDatabaseReady || !window.kolibrie) {
+          addTerminalMessage('❌ Kolibrie WASM not ready yet. Please wait for initialization to complete.', 'error');
+          
+          // Try to re-initialize if needed
+          if (!window.kolibrie && window.initKolibrie) {
+            addTerminalMessage('🔄 Attempting to re-initialize WASM...', 'info');
+            window.initKolibrie();
+          }
+          return;
+        }
+        
+        addTerminalMessage('🚀 Executing query...', 'info');
+        setTimeout(() => {
+          executeKolibrieQuery();
+        }, 100);
+      };
+
+      // Update initial terminal message
+      document.getElementById('results-content').innerHTML = `
+        <div class="terminal-output terminal-info">🚀 Kolibrie SPARQL + RULE Playground
+        
+⏳ Initializing Kolibrie WASM engine...
+💡 Load RDF data in Tools panel (🔧 Tools button)
+📝 Write SPARQL queries with RULE(:RuleName, ?variable) syntax
+🔧 Define rules in Tools → Rule Syntax, then call them in queries
+
+<strong>Quick Start:</strong>
+1. Click "🔧 Tools" to open the tools panel
+2. The RDF data is pre-loaded in Tools → RDF/XML
+3. The example RULE is pre-loaded in Tools → Rule Syntax  
+4. Execute the sample query: SELECT ?room WHERE { RULE(:OverheatingAlert, ?room) }
+
+<strong>Rule Calling Syntax:</strong>
+• Use RULE(:RuleName, ?variable) in WHERE clauses
+• Rules are processed before query execution
+• Combine RULE calls with regular SPARQL patterns
+• Uses single-threaded parse_rdf_simple for reliable data loading
+
+<strong>Example Rule Call:</strong>
+PREFIX ex: &lt;http://example.org#&gt;
+SELECT ?room
+WHERE {
+  RULE(:OverheatingAlert, ?room)
+}
+        </div>
+      `;
+
+      // Wait for Kolibrie to be ready - Updated event handlers
+      window.addEventListener('kolibrie-ready', () => {
+        console.log('Kolibrie ready event received');
+        kolibrieDatabaseReady = true;
+        console.log('🚀 Kolibrie WASM Engine Ready', 'success');
+      });
+
+      // Additional event for full readiness
+      window.addEventListener('kolibrie-fully-ready', () => {
+        console.log('Kolibrie fully ready event received');
+        kolibrieDatabaseReady = true;
+        
+        // Load RDF data from tools panel after everything is initialized
+        setTimeout(() => {
+          try {
+            const success = loadRdfDataIntoDatabase();
+            if (success) {
+              console.log('✅ Sample RDF data preloaded successfully', 'success');
+            }
+          } catch (error) {
+            console.warn('Error preloading sample data:', error);
+            addTerminalMessage('⚠️ Could not preload sample data. You can manually load data via Tools panel.', 'warning');
+          }
+        }, 250);
+      });
+
+      // Handle Kolibrie initialization errors
+      window.addEventListener('kolibrie-error', (event) => {
+        console.error('Kolibrie error event:', event.detail);
+        kolibrieDatabaseReady = false;
+        addTerminalMessage(`❌ Failed to initialize Kolibrie WASM: ${event.detail.message}`, 'error');
+      });
+
+      // Check if Kolibrie is already ready (in case events fired before listeners were set)
+      function checkKolibrieReady() {
+        if (window.kolibrie && window.kolibrieDatabaseReady) {
+          console.log('Kolibrie was already ready');
+          kolibrieDatabaseReady = true;
+          console.log('🚀 Kolibrie WASM Engine Ready (already initialized)', 'success');
+          
+          setTimeout(() => {
+            try {
+              const success = loadRdfDataIntoDatabase();
+              if (success) {
+                console.log('✅ Sample RDF data preloaded successfully', 'success');
+              }
+            } catch (error) {
+              console.warn('Error preloading sample data:', error);
+              console.log('⚠️ Could not preload sample data. You can manually load data via Tools panel.', 'warning');
+            }
+          }, 250);
+          return true;
+        }
+        return false;
+      }
+
+      // Check if Kolibrie is already ready
+      setTimeout(() => {
+        if (!checkKolibrieReady()) {
+          // If not ready, show a loading message and keep checking
+          addTerminalMessage('⏳ Waiting for Kolibrie WASM engine to initialize...', 'info');
+          
+          let checkCount = 0;
+          const checkInterval = setInterval(() => {
+            checkCount++;
+            if (checkKolibrieReady()) {
+              clearInterval(checkInterval);
+            } else if (checkCount > 50) { // 5 seconds max wait
+              clearInterval(checkInterval);
+              addTerminalMessage('❌ Kolibrie initialization timeout. Please refresh the page.', 'error');
+            }
+          }, 100);
+        }
+      }, 100);
+    });
+
+    function executeKolibrieQuery() {
+      console.log('executeKolibrieQuery called. Ready:', kolibrieDatabaseReady, 'Window kolibrie:', !!window.kolibrie);
+      
+      if (!kolibrieDatabaseReady || !window.kolibrie || !window.kolibrie.SparqlDatabase) {
+        addTerminalMessage('❌ Kolibrie WASM not ready', 'error');
+        return;
+      }
+
+      const sparqlQuery = editor.getValue().trim();
+      const ruleTextarea = document.getElementById('ruleTextarea');
+      const ruleDefinition = ruleTextarea ? ruleTextarea.value.trim() : '';
+      
+      if (!sparqlQuery) {
+        addTerminalMessage('❌ No SPARQL query provided', 'error');
+        return;
+      }
+
+      try {
+        // Load fresh data into a new database instance
+        const dataLoaded = loadRdfDataIntoDatabase();
+        if (!dataLoaded) {
+          addTerminalMessage('❌ Failed to load RDF data, cannot execute query', 'error');
+          return;
+        }
+        
+        let results;
+        const startTime = performance.now();
+        
+        if (ruleDefinition) {
+          addTerminalMessage('🔧 Processing RULE definition...', 'info');
+          
+          try {
+            // Process the rule definition using the single-threaded approach
+            console.log('Processing rule:', ruleDefinition);
+            addTerminalMessage(`📋 Rule definition: ${ruleDefinition.substring(0, 100)}...`, 'info');
+            
+            const ruleResult = window.kolibrie.database.process_rule_definition(ruleDefinition);
+            addTerminalMessage('✅ Rule processed and applied successfully', 'success');
+            
+            // Log the rule processing result
+            console.log('Rule processing result:', ruleResult);
+            if (ruleResult) {
+              try {
+                const parsedResult = JSON.parse(ruleResult);
+                console.log('Parsed rule result:', parsedResult);
+                if (parsedResult.success) {
+                  addTerminalMessage(`📋 Rule inferred ${parsedResult.inferred_facts_count || 0} new facts`, 'info');
+                  
+                  if (parsedResult.inferred_facts && parsedResult.inferred_facts.length > 0) {
+                    addTerminalMessage(`🔍 Inferred facts: ${parsedResult.inferred_facts.join(', ')}`, 'info');
+                  }
+                } else {
+                  addTerminalMessage(`⚠️ Rule processing result: ${parsedResult.error || 'Unknown error'}`, 'warning');
+                }
+              } catch (e) {
+                addTerminalMessage(`📋 Rule result: ${ruleResult}`, 'info');
+              }
+            }
+            
+            addTerminalMessage('🔍 Executing SPARQL query with RULE() syntax...', 'info');
+            
+          } catch (ruleError) {
+            console.error('Rule processing error:', ruleError);
+            addTerminalMessage(`⚠️ Rule processing failed: ${ruleError.message}`, 'warning');
+            addTerminalMessage('🔄 Continuing with regular SPARQL execution...', 'info');
+          }
+        } else {
+          addTerminalMessage('📝 Executing SPARQL query...', 'info');
+        }
+        
+        // Execute the SPARQL query
+        console.log('Executing query:', sparqlQuery);
+        addTerminalMessage(`📋 Query: ${sparqlQuery}`, 'info');
+        
+        results = window.kolibrie.database.execute_sparql_query(sparqlQuery);
+        
+        const endTime = performance.now();
+        const executionTime = (endTime - startTime).toFixed(2);
+        
+        // Get structured results using the same database instance
+        let tableResults;
+        try {
+          tableResults = window.kolibrie.database.execute_sparql_query_as_table(sparqlQuery);
+        } catch (e) {
+          console.warn('Table format not available:', e);
+          tableResults = null;
+        }
+        
+        displayKolibrieResults(results, tableResults, executionTime, ruleDefinition ? 'RULE + SPARQL' : 'SPARQL');
+        
+      } catch (error) {
+        addTerminalMessage(`❌ Execution failed: ${error.message || 'Unknown error'}`, 'error');
+        console.error('Kolibrie execution error:', error);
+        
+        // Simplified error recovery
+        if (error.message && (error.message.includes('unreachable') || error.message.includes('borrowed'))) {
+          addTerminalMessage('💡 Memory issue detected. Creating fresh database instance...', 'info');
+          try {
+            window.kolibrie.database = new window.kolibrie.SparqlDatabase();
+            addTerminalMessage('🔄 Fresh database instance created. Try your query again.', 'success');
+          } catch (recoveryError) {
+            addTerminalMessage('❌ Could not recover. Please refresh the page.', 'error');
+          }
+        }
+      }
+    }
+
+    function displayKolibrieResults(rawResults, tableResults, executionTime, queryType) {
+      const content = document.getElementById('results-content');
+      let html = `<div class="terminal-output terminal-success">✅ ${queryType} executed successfully!</div>`;
+      
+      // Debug information
+      console.log('Raw results:', rawResults);
+      console.log('Table results:', tableResults);
+      console.log('Table results type:', typeof tableResults);
+      console.log('Table results length:', Array.isArray(tableResults) ? tableResults.length : 'Not an array');
+      
+      if (tableResults && Array.isArray(tableResults) && tableResults.length > 0) {
+        // Display as table if we have structured data
+        html += '<table class="results-table"><thead><tr>';
+        
+        // Check if we have proper structured data
+        const firstResult = tableResults[0];
+        console.log('First result:', firstResult);
+        
+        if (Array.isArray(firstResult) && firstResult.length > 0) {
+          // Handle array of arrays format
+          const numColumns = firstResult.length;
+          for (let i = 0; i < numColumns; i++) {
+            html += `<th>Column ${i + 1}</th>`;
+          }
+          html += '</tr></thead><tbody>';
+          
+          tableResults.forEach(row => {
+            html += '<tr>';
+            if (Array.isArray(row)) {
+              row.forEach(cell => {
+                html += `<td>${escapeHtml(String(cell || ''))}</td>`;
+              });
+            } else {
+              html += `<td>${escapeHtml(String(row || ''))}</td>`;
+            }
+            html += '</tr>';
+          });
+          html += '</tbody></table>';
+          
+          html += `<div class="terminal-output terminal-info">📊 ${tableResults.length} results returned in ${executionTime}ms</div>`;
+        } else if (typeof firstResult === 'object' && firstResult !== null) {
+          // Handle object format
+          const headers = Object.keys(firstResult);
+          headers.forEach(header => {
+            html += `<th>${escapeHtml(header)}</th>`;
+          });
+          html += '</tr></thead><tbody>';
+          
+          tableResults.forEach(row => {
+            html += '<tr>';
+            headers.forEach(header => {
+              const value = row[header];
+              html += `<td>${escapeHtml(String(value || ''))}</td>`;
+            });
+            html += '</tr>';
+          });
+          html += '</tbody></table>';
+          
+          html += `<div class="terminal-output terminal-info">📊 ${tableResults.length} results returned in ${executionTime}ms</div>`;
+        } else {
+          // Fallback: display each result as a row
+          html += '<th>Result</th></tr></thead><tbody>';
+          tableResults.forEach(result => {
+            html += `<tr><td>${escapeHtml(String(result || ''))}</td></tr>`;
+          });
+          html += '</tbody></table>';
+          html += `<div class="terminal-output terminal-info">📊 ${tableResults.length} results returned in ${executionTime}ms</div>`;
+        }
+      } else if (rawResults) {
+        // Try to parse raw results as JSON first
+        try {
+          const parsedResults = JSON.parse(rawResults);
+          if (Array.isArray(parsedResults) && parsedResults.length > 0) {
+            html += '<table class="results-table"><thead><tr>';
+            
+            if (Array.isArray(parsedResults[0])) {
+              // Array of arrays
+              const numColumns = parsedResults[0].length;
+              for (let i = 0; i < numColumns; i++) {
+                html += `<th>Column ${i + 1}</th>`;
+              }
+              html += '</tr></thead><tbody>';
+              
+              parsedResults.forEach(row => {
+                html += '<tr>';
+                if (Array.isArray(row)) {
+                  row.forEach(cell => {
+                    html += `<td>${escapeHtml(String(cell || ''))}</td>`;
+                  });
+                } else {
+                  html += `<td>${escapeHtml(String(row || ''))}</td>`;
+                }
+                html += '</tr>';
+              });
+              html += '</tbody></table>';
+              html += `<div class="terminal-output terminal-info">📊 ${parsedResults.length} results returned in ${executionTime}ms</div>`;
+            } else {
+              // Display as preformatted JSON
+              html += `<div class="terminal-output"><pre>${escapeHtml(JSON.stringify(parsedResults, null, 2))}</pre></div>`;
+              html += `<div class="terminal-output terminal-info">⚡ Executed in ${executionTime}ms</div>`;
+            }
+          } else {
+            html += `<div class="terminal-output"><pre>${escapeHtml(String(rawResults))}</pre></div>`;
+            html += `<div class="terminal-output terminal-info">⚡ Executed in ${executionTime}ms</div>`;
+          }
+        } catch (e) {
+          // Not valid JSON, display as text
+          html += `<div class="terminal-output"><pre>${escapeHtml(String(rawResults))}</pre></div>`;
+          html += `<div class="terminal-output terminal-info">⚡ Executed in ${executionTime}ms</div>`;
+        }
+      } else {
+        html += '<div class="terminal-output terminal-warning">⚠️ No results returned</div>';
+        html += `<div class="terminal-output terminal-info">⚡ Executed in ${executionTime}ms</div>`;
+      }
+      
+      content.innerHTML = html;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+
+</html>
